@@ -77,6 +77,23 @@ class ActionPlan:
     profile: BusinessProfile
     keywords: list[ScoredKeyword] = field(default_factory=list)
     actions: list[Action] = field(default_factory=list)
+    executive_summary: str = ""   # LLM-written narrative; empty if no LLM configured
+
+
+@dataclass(frozen=True)
+class SiteSnapshot:
+    """Aggregated signals the classifier needs — derived from SENSE + M2 crawl.
+
+    Pure input: the use case builds this from real data, the classifier reads it.
+    Keeps classification deterministic and testable with no I/O.
+    """
+    ranking_query_count: int = 0      # distinct queries the site ranks for (GSC)
+    total_clicks: int = 0             # search clicks in the window (GSC)
+    avg_position: float = 0.0         # mean position across ranking queries (GSC)
+    total_pages: int = 0             # pages found by the crawler (M2)
+    ecommerce_pages: int = 0          # pages with product/cart signals (M2)
+    blog_pages: int = 0              # pages under /blog or with article schema (M2)
+    has_local_signals: bool = False   # NAP / city terms / LocalBusiness schema
 
 
 # ─────────────────────────────────────────────────────────────

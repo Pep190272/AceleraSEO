@@ -31,6 +31,16 @@ class Settings(BaseSettings):
     # Where the OAuth token is cached after the consent flow (gitignored).
     google_token_file: str = "./gsc-token.json"
 
+    # Market data (bring-your-own-key — ADR-0001).
+    dataforseo_login: str = ""
+    dataforseo_password: str = ""
+    serpapi_key: str = ""
+
+    # LLM (DECIDE narration). Falls back to NullLLM when no key is set.
+    llm_provider: str = "anthropic"
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-opus-4-8"
+
 
 @lru_cache
 def get_settings() -> Settings:

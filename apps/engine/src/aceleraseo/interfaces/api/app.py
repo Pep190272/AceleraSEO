@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 
 from ...application.crawl import CrawlSite
 from ...application.sense import CollectSignals
@@ -90,5 +91,53 @@ def audit_run(start_url: str, max_pages: int = 200, max_depth: int = 5,
         "issues": [
             {"code": i.code, "severity": i.severity.value, "url": i.url, "message": i.message}
             for i in report.issues
+        ],
+    }
+
+
+class _KeywordIn(BaseModel):
+    term: str
+    search_volume: int = 0
+    difficulty: float = 0.0
+    intent: str = "informational"
+
+
+class _StrategyIn(BaseModel):
+    snapshot: dict = {}
+    keywords: list[_KeywordIn] = []
+
+
+@app.post("/strategy/preview")
+def strategy_preview(body: _StrategyIn) -> dict:
+    """DECIDE: classify + score keywords + derive actions + LLM summary.
+
+    Accepts keyword metrics directly so it works without a market API key. Uses
+    the configured LLM, or NullLLM if none is set (plan is still produced).
+    """
+    from ...application.decide import BuildStrategy
+    from ...domain.models import Keyword, SiteSnapshot
+    from ...infrastructure.llm.factory import make_llm
+
+    snapshot = SiteSnapshot(**body.snapshot)
+    candidates = [Keyword(term=k.term, search_volume=k.search_volume,
+                          difficulty=k.difficulty, intent=k.intent) for k in body.keywords]
+
+    plan = BuildStrategy(make_llm(get_settings())).execute(snapshot, candidates)
+    return {
+        "profile": {
+            "type": plan.profile.type.value,
+            "maturity": plan.profile.maturity.value,
+            "authority_band": plan.profile.authority_band.value,
+            "is_geo_relevant": plan.profile.is_geo_relevant,
+        },
+        "executive_summary": plan.executive_summary,
+        "keywords": [
+            {"term": s.keyword.term, "opportunity": s.opportunity, "rationale": s.rationale}
+            for s in plan.keywords
+        ],
+        "actions": [
+            {"kind": a.kind, "target_url": a.target_url, "risk": a.risk,
+             "description": a.description, "rationale": a.rationale}
+            for a in plan.actions
         ],
     }

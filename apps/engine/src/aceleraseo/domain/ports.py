@@ -3,7 +3,14 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from .models import ActionPlan, BusinessProfile, CrawledPage, Keyword, RankingSignal
+from .models import (
+    Action,
+    BusinessProfile,
+    CrawledPage,
+    Keyword,
+    RankingSignal,
+    ScoredKeyword,
+)
 
 
 class RankingProvider(Protocol):
@@ -37,5 +44,15 @@ class IndexStatusReader(Protocol):
 
 
 class LLMPort(Protocol):
-    """Strategy reasoning — Anthropic / OpenAI / Ollama adapter."""
-    def reason_strategy(self, profile: BusinessProfile, context: str) -> ActionPlan: ...
+    """Strategy narration — Anthropic / OpenAI / Ollama adapter.
+
+    The deterministic core builds the scored keywords and actions; the LLM only
+    explains and prioritises them into an executive summary. This keeps the
+    numbers trustworthy and makes the LLM an enhancement, not a dependency.
+    """
+    def explain_strategy(
+        self,
+        profile: BusinessProfile,
+        keywords: list[ScoredKeyword],
+        actions: list[Action],
+    ) -> str: ...
