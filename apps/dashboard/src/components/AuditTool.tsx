@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { useT } from "@/lib/i18n";
+
 type Issue = { code: string; severity: string; url: string; message: string };
 type Report = {
   pages_crawled: number;
@@ -12,6 +14,7 @@ type Report = {
 };
 
 export default function AuditTool() {
+  const { t } = useT();
   const [url, setUrl] = useState("https://example.com");
   const [report, setReport] = useState<Report | null>(null);
   const [error, setError] = useState("");
@@ -40,17 +43,14 @@ export default function AuditTool() {
   return (
     <div className="panel">
       <div className="field">
-        <label>Site URL to audit</label>
-        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://yoursite.com" />
+        <label>{t("audit.label")}</label>
+        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://tusitio.com" />
       </div>
 
       <button className="primary" onClick={run} disabled={loading}>
-        {loading ? "Crawling…" : "Run technical audit"}
+        {loading ? t("audit.running") : t("audit.run")}
       </button>
-      <p className="hint">
-        Crawls the site (same-host, up to 25 pages) and reports severity-tagged SEO issues. JS-heavy
-        sites may need the rendering crawler — see the README.
-      </p>
+      <p className="hint">{t("audit.hint")}</p>
 
       {error && <div className="error">⚠ {error}</div>}
 
@@ -59,31 +59,31 @@ export default function AuditTool() {
           <div className="counts">
             <div className="count">
               <div className="n">{report.pages_crawled}</div>
-              <div className="l">pages</div>
+              <div className="l">{t("audit.pages")}</div>
             </div>
             <div className="count">
               <div className="n" style={{ color: "var(--crit)" }}>{report.critical}</div>
-              <div className="l">critical</div>
+              <div className="l">{t("audit.critical")}</div>
             </div>
             <div className="count">
               <div className="n" style={{ color: "var(--warn)" }}>{report.warning}</div>
-              <div className="l">warning</div>
+              <div className="l">{t("audit.warning")}</div>
             </div>
             <div className="count">
               <div className="n" style={{ color: "var(--notice)" }}>{report.notice}</div>
-              <div className="l">notice</div>
+              <div className="l">{t("audit.notice")}</div>
             </div>
           </div>
 
           {report.issues.length === 0 ? (
-            <p className="hint">No issues found on the crawled pages. ✓</p>
+            <p className="hint">{t("audit.none")}</p>
           ) : (
             <table>
               <thead>
                 <tr>
-                  <th>Severity</th>
-                  <th>Issue</th>
-                  <th>URL</th>
+                  <th>{t("audit.col.sev")}</th>
+                  <th>{t("audit.col.issue")}</th>
+                  <th>{t("audit.col.url")}</th>
                 </tr>
               </thead>
               <tbody>

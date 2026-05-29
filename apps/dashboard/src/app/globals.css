@@ -88,3 +88,59 @@ tr:last-child td { border-bottom: none; }
 .hint { font-size: 0.8rem; color: var(--muted); margin-top: 0.75rem; }
 footer { margin-top: 3rem; text-align: center; color: var(--muted); font-size: 0.8rem; }
 footer a { color: var(--accent); text-decoration: none; }
+
+/* ── Strategy tool — clarity-first ─────────────────────────── */
+.lead { color: var(--text); margin-bottom: 1.5rem; font-size: 0.95rem; }
+.lead strong { color: var(--accent); }
+
+.select {
+  width: 100%; background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); padding: 0.6rem 0.75rem; font-size: 0.9rem;
+}
+
+.link-btn {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-size: 0.8rem; padding: 0.4rem 0; margin-top: 0.4rem;
+}
+.link-btn:hover { color: var(--accent); }
+
+.result-title { font-size: 1.3rem; margin: 0.5rem 0 1rem; letter-spacing: -0.02em; }
+.result-sub { font-size: 1rem; margin: 1.5rem 0 0.75rem; color: var(--text); }
+.plain-profile {
+  background: var(--panel-2); border-left: 3px solid var(--accent); border-radius: 6px;
+  padding: 0.9rem 1rem; margin-bottom: 1.25rem; font-size: 0.92rem;
+}
+.plain-profile strong { color: var(--accent); }
+
+.verdict { font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.6rem; border-radius: 999px; white-space: nowrap; }
+.v-best { background: rgba(74,222,128,0.18); color: var(--accent); }
+.v-good { background: rgba(96,165,250,0.16); color: var(--notice); }
+.v-hard { background: rgba(251,191,36,0.16); color: var(--warn); }
+.v-skip { background: rgba(139,149,167,0.15); color: var(--muted); }
+
+.actions { margin: 0; padding-left: 1.25rem; font-size: 0.9rem; }
+.actions li { padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
+.actions li:last-child { border-bottom: none; }
+.tag-high { color: var(--crit); font-size: 0.72rem; font-weight: 700; text-transform: uppercase; }
+
+/* ── Header right (lang toggle + status) ───────────────────── */
+.header-right { display: flex; align-items: center; gap: 1rem; }
+.lang-toggle { display: flex; align-items: center; gap: 0.35rem; font-size: 0.8rem; }
+.lang-toggle button {
+  background: none; border: none; color: var(--muted); cursor: pointer;
+  font-weight: 600; padding: 0.1rem 0.2rem;
+}
+.lang-toggle button.on { color: var(--accent); }
+.lang-toggle .sep { color: var(--border); }
+
+/* ── Mode switch (discover vs paste) ───────────────────────── */
+.mode-switch { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; }
+.mode-switch button {
+  flex: 1; background: var(--panel-2); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--muted); padding: 0.6rem; cursor: pointer;
+  font-size: 0.88rem; font-weight: 500;
+}
+.mode-switch button.on {
+  border-color: var(--accent); color: var(--accent);
+  background: rgba(74,222,128,0.08);
+}

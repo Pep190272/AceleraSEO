@@ -4,12 +4,15 @@ import { useState } from "react";
 
 import AuditTool from "@/components/AuditTool";
 import EngineStatus from "@/components/EngineStatus";
+import LangToggle from "@/components/LangToggle";
 import SettingsTool from "@/components/SettingsTool";
 import StrategyTool from "@/components/StrategyTool";
+import { useT } from "@/lib/i18n";
 
 type Tab = "strategy" | "audit" | "settings";
 
 export default function Home() {
+  const { t } = useT();
   const [tab, setTab] = useState<Tab>("strategy");
 
   return (
@@ -18,35 +21,26 @@ export default function Home() {
         <div className="brand">
           Acelera<span>SEO</span>
         </div>
-        <EngineStatus />
+        <div className="header-right">
+          <LangToggle />
+          <EngineStatus />
+        </div>
       </header>
 
       <div className="hero">
-        <h1>The expert, not another data dashboard.</h1>
-        <p>
-          Open-source autonomous SEO. It senses your real rankings, decides the winnable strategy
-          for your business, acts, and learns. Try the brain below — no signup, no API keys.
-        </p>
+        <h1>{t("hero.title")}</h1>
+        <p>{t("hero.subtitle")}</p>
       </div>
 
       <div className="tabs">
-        <button
-          className={`tab ${tab === "strategy" ? "active" : ""}`}
-          onClick={() => setTab("strategy")}
-        >
-          Strategy engine
+        <button className={`tab ${tab === "strategy" ? "active" : ""}`} onClick={() => setTab("strategy")}>
+          {t("nav.strategy")}
         </button>
-        <button
-          className={`tab ${tab === "audit" ? "active" : ""}`}
-          onClick={() => setTab("audit")}
-        >
-          Technical audit
+        <button className={`tab ${tab === "audit" ? "active" : ""}`} onClick={() => setTab("audit")}>
+          {t("nav.audit")}
         </button>
-        <button
-          className={`tab ${tab === "settings" ? "active" : ""}`}
-          onClick={() => setTab("settings")}
-        >
-          Settings
+        <button className={`tab ${tab === "settings" ? "active" : ""}`} onClick={() => setTab("settings")}>
+          {t("nav.settings")}
         </button>
       </div>
 
@@ -55,7 +49,7 @@ export default function Home() {
       {tab === "settings" && <SettingsTool />}
 
       <footer>
-        Open source (MIT) ·{" "}
+        {t("footer.oss")}{" "}
         <a href="https://github.com/Pep190272/AceleraSEO" target="_blank" rel="noreferrer">
           github.com/Pep190272/AceleraSEO
         </a>

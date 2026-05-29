@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { useT } from "@/lib/i18n";
+
 type Field = {
   key: string;
   label: string;
@@ -16,6 +18,7 @@ type Field = {
 type SettingsResponse = { demo_mode: boolean; fields: Field[] };
 
 export default function SettingsTool() {
+  const { t } = useT();
   const [demo, setDemo] = useState(false);
   const [fields, setFields] = useState<Field[]>([]);
   const [edits, setEdits] = useState<Record<string, string>>({});
@@ -30,7 +33,7 @@ export default function SettingsTool() {
       setDemo(Boolean(data.demo_mode));
       setFields(data.fields ?? []);
     } catch {
-      setStatus("Could not reach the engine.");
+      setStatus(t("common.unreachable"));
     } finally {
       setLoading(false);
     }
@@ -38,10 +41,11 @@ export default function SettingsTool() {
 
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function save() {
-    setStatus("Saving…");
+    setStatus(t("set.saving"));
     try {
       const res = await fetch("/api/settings", {
         method: "POST",
@@ -52,13 +56,13 @@ export default function SettingsTool() {
       if (!res.ok) throw new Error(data?.detail || data?.error || "Save failed");
       setEdits({});
       setFields(data.fields ?? fields);
-      setStatus("Saved ✓");
+      setStatus(t("set.saved"));
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Save failed");
     }
   }
 
-  if (loading) return <div className="panel">Loading settings…</div>;
+  if (loading) return <div className="panel">{t("set.loading")}</div>;
 
   const groups = Array.from(new Set(fields.map((f) => f.group)));
   const dirty = Object.keys(edits).length > 0;
@@ -67,16 +71,21 @@ export default function SettingsTool() {
     <div className="panel">
       {demo && (
         <div className="summary" style={{ borderLeftColor: "var(--warn)" }}>
-          🔒 This is a shared demo — settings are read-only. To use your own keys,
-          self-host in one command (<code>docker compose up</code>) and configure
-          everything from this same tab. No <code>.env</code> editing.
+          {t("set.demo")}
         </div>
       )}
 
       {groups.map((group) => (
         <div key={group} style={{ marginBottom: "1.5rem" }}>
-          <h3 style={{ fontSize: "0.9rem", color: "var(--muted)", marginBottom: "0.75rem",
-            textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          <h3
+            style={{
+              fontSize: "0.9rem",
+              color: "var(--muted)",
+              marginBottom: "0.75rem",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+            }}
+          >
             {group}
           </h3>
           {fields
@@ -87,7 +96,7 @@ export default function SettingsTool() {
                   {f.label}
                   {f.secret && f.is_set && (
                     <span style={{ color: "var(--accent)", marginLeft: "0.5rem" }}>
-                      ● configured
+                      {t("set.configured")}
                     </span>
                   )}
                 </label>
@@ -97,14 +106,12 @@ export default function SettingsTool() {
                   placeholder={
                     f.secret
                       ? f.is_set
-                        ? "•••••••• (leave blank to keep)"
-                        : f.placeholder || "not set"
+                        ? t("set.keep")
+                        : f.placeholder || t("set.notset")
                       : f.placeholder
                   }
                   defaultValue={f.secret ? "" : f.value}
-                  onChange={(e) =>
-                    setEdits((prev) => ({ ...prev, [f.key]: e.target.value }))
-                  }
+                  onChange={(e) => setEdits((prev) => ({ ...prev, [f.key]: e.target.value }))}
                 />
                 <p className="hint">{f.description}</p>
               </div>
@@ -114,10 +121,14 @@ export default function SettingsTool() {
 
       {!demo && (
         <button className="primary" onClick={save} disabled={!dirty}>
-          Save settings
+          {t("set.save")}
         </button>
       )}
-      {status && <p className="hint" style={{ marginTop: "0.75rem" }}>{status}</p>}
+      {status && (
+        <p className="hint" style={{ marginTop: "0.75rem" }}>
+          {status}
+        </p>
+      )}
     </div>
   );
 }

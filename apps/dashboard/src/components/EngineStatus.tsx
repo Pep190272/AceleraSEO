@@ -2,7 +2,10 @@
 
 import { useEffect, useState } from "react";
 
+import { useT } from "@/lib/i18n";
+
 export default function EngineStatus() {
+  const { t } = useT();
   const [online, setOnline] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -13,7 +16,7 @@ export default function EngineStatus() {
   }, []);
 
   const label =
-    online === null ? "checking engine…" : online ? "engine online" : "engine offline";
+    online === null ? t("engine.checking") : online ? t("engine.online") : t("engine.offline");
   const cls = online === null ? "dot" : online ? "dot on" : "dot off";
 
   return (
