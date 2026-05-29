@@ -56,3 +56,15 @@ class LLMPort(Protocol):
         keywords: list[ScoredKeyword],
         actions: list[Action],
     ) -> str: ...
+
+
+class KeywordDiscoverer(Protocol):
+    """Generate candidate keywords for a niche from a plain business description.
+
+    This is the "tell it your business -> it finds the words" step. The LLM
+    proposes terms with rough metrics; a MarketProvider can then replace those
+    estimates with real volume/difficulty.
+    """
+    def discover(
+        self, description: str, location: str, language: str, max_keywords: int
+    ) -> list[Keyword]: ...

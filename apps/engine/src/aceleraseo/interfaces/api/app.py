@@ -137,6 +137,44 @@ class _StrategyIn(BaseModel):
     keywords: list[_KeywordIn] = []
 
 
+class _DiscoverIn(BaseModel):
+    snapshot: dict = {}
+    business_description: str = ""
+    location: str = ""
+    language: str = "en"
+    max_keywords: int = 20
+
+
+@app.post("/strategy/discover")
+def strategy_discover(body: _DiscoverIn) -> dict:
+    """Describe your niche -> the LLM finds keywords (DataForSEO enriches), then
+    the engine ranks the winnable ones. Needs an LLM key, so it is unavailable
+    in the keyless demo (returns 422 with a clear message)."""
+    from ...application.decide import BuildStrategy
+    from ...domain.models import SiteSnapshot
+    from ...infrastructure.llm.factory import make_discoverer, make_llm, make_market
+
+    if not body.business_description.strip():
+        raise HTTPException(422, "Describe your business/niche first.")
+
+    settings = get_settings()
+    discoverer = make_discoverer(settings)
+    if discoverer is None:
+        raise HTTPException(
+            422,
+            "Keyword discovery needs an LLM API key. This shared demo runs keyless — "
+            "paste your own keywords below, or self-host and add your key in Settings.",
+        )
+
+    from ...application.discover import DiscoverKeywords
+    candidates = DiscoverKeywords(discoverer, make_market(settings)).execute(
+        body.business_description, body.location, body.language, body.max_keywords
+    )
+    snapshot = SiteSnapshot(**body.snapshot)
+    plan = BuildStrategy(make_llm(settings)).execute(snapshot, candidates)
+    return _serialise_plan(plan)
+
+
 @app.post("/strategy/preview")
 def strategy_preview(body: _StrategyIn) -> dict:
     """DECIDE: classify + score keywords + derive actions + LLM summary.
@@ -153,6 +191,10 @@ def strategy_preview(body: _StrategyIn) -> dict:
                           difficulty=k.difficulty, intent=k.intent) for k in body.keywords]
 
     plan = BuildStrategy(make_llm(get_settings())).execute(snapshot, candidates)
+    return _serialise_plan(plan)
+
+
+def _serialise_plan(plan) -> dict:
     return {
         "profile": {
             "type": plan.profile.type.value,
