@@ -24,6 +24,36 @@ def health() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/settings")
+def get_settings_schema() -> dict:
+    """Field definitions + current state for the Settings tab. Secrets masked."""
+    from ...infrastructure.config import is_demo_mode
+    from ...infrastructure.settings_store import describe
+
+    return {"demo_mode": is_demo_mode(), "fields": describe(get_settings())}
+
+
+class _SettingsIn(BaseModel):
+    values: dict[str, str]
+
+
+@app.post("/settings")
+def update_settings(body: _SettingsIn) -> dict:
+    """Persist UI-provided config (no .env editing). Blocked in demo mode."""
+    from ...infrastructure.config import is_demo_mode, reload_settings
+    from ...infrastructure.settings_store import describe, save_overrides
+
+    if is_demo_mode():
+        raise HTTPException(
+            403,
+            "This is a shared demo — settings are read-only. Self-host to configure "
+            "your own keys (see the README).",
+        )
+    save_overrides(body.values)
+    reload_settings()
+    return {"saved": True, "fields": describe(get_settings())}
+
+
 @app.get("/auth/google/login")
 def google_login() -> RedirectResponse:
     settings = get_settings()

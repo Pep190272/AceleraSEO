@@ -4,10 +4,13 @@ import { useState } from "react";
 
 import AuditTool from "@/components/AuditTool";
 import EngineStatus from "@/components/EngineStatus";
+import SettingsTool from "@/components/SettingsTool";
 import StrategyTool from "@/components/StrategyTool";
 
+type Tab = "strategy" | "audit" | "settings";
+
 export default function Home() {
-  const [tab, setTab] = useState<"strategy" | "audit">("strategy");
+  const [tab, setTab] = useState<Tab>("strategy");
 
   return (
     <div className="container">
@@ -39,9 +42,17 @@ export default function Home() {
         >
           Technical audit
         </button>
+        <button
+          className={`tab ${tab === "settings" ? "active" : ""}`}
+          onClick={() => setTab("settings")}
+        >
+          Settings
+        </button>
       </div>
 
-      {tab === "strategy" ? <StrategyTool /> : <AuditTool />}
+      {tab === "strategy" && <StrategyTool />}
+      {tab === "audit" && <AuditTool />}
+      {tab === "settings" && <SettingsTool />}
 
       <footer>
         Open source (MIT) ·{" "}

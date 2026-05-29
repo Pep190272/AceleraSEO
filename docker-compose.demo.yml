@@ -1,0 +1,42 @@
+# ─────────────────────────────────────────────────────────────
+# AceleraSEO — full stack (engine + dashboard) for a hosted demo.
+#   DEMO_MODE=true makes the engine reject UI secret writes — safe to expose.
+#
+#   docker compose -f docker-compose.demo.yml up --build
+#   dashboard → http://localhost:3000   engine → http://localhost:8000
+#
+# For your OWN private instance, use docker-compose.yml instead (settings
+# editable from the Settings tab — no .env editing).
+# ─────────────────────────────────────────────────────────────
+services:
+  engine:
+    build:
+      context: ./apps/engine
+      dockerfile: Dockerfile
+    image: aceleraseo/engine:latest
+    environment:
+      DATABASE_URL: sqlite:////app/data/aceleraseo.db
+      GOOGLE_TOKEN_FILE: /app/data/gsc-token.json
+      SETTINGS_OVERRIDES_FILE: /app/data/settings-overrides.json
+      APP_PORT: 8000
+      DEMO_MODE: "true"          # shared instance → settings are read-only
+    volumes:
+      - demo-data:/app/data
+    restart: unless-stopped
+
+  dashboard:
+    build:
+      context: ./apps/dashboard
+      dockerfile: Dockerfile
+    image: aceleraseo/dashboard:latest
+    environment:
+      # Server-side only; the dashboard reaches the engine over the compose network.
+      ENGINE_URL: http://engine:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - engine
+    restart: unless-stopped
+
+volumes:
+  demo-data:

@@ -11,6 +11,9 @@ credentials*.json
 client_secret*.json
 gsc-token.json
 ga4-token.json
+# UI-written config overrides may contain API keys — never commit.
+settings-overrides.json
+**/data/
 
 # ─────────────────────────────────────────────────────────────
 # Python (apps/engine)
