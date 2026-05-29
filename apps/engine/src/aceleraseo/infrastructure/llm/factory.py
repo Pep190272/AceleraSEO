@@ -5,8 +5,21 @@ from ..config import Settings
 from .null_llm import NullLLM
 
 
+def _is_real_key(value: str) -> bool:
+    """A configured key must be non-empty AND not a placeholder.
+
+    The shipped .env.example uses YOUR_*_HERE placeholders. Treating those as a
+    real key selected the Anthropic adapter, which then 500'd on the first call.
+    A placeholder must behave exactly like 'no key' -> NullLLM.
+    """
+    if not value:
+        return False
+    upper = value.upper()
+    return not (upper.startswith("YOUR_") or "PLACEHOLDER" in upper or value == "change-me")
+
+
 def make_llm(settings: Settings):
-    if settings.llm_provider == "anthropic" and settings.anthropic_api_key:
+    if settings.llm_provider == "anthropic" and _is_real_key(settings.anthropic_api_key):
         from .anthropic_adapter import AnthropicLLM
         return AnthropicLLM(settings.anthropic_api_key, settings.anthropic_model)
     # ollama / openai adapters plug in here later.

@@ -51,7 +51,14 @@ class BuildStrategy:
 
         actions = self._derive_actions(scored, crawl_issues or [])
 
-        summary = self._llm.explain_strategy(profile, scored, actions)
+        # The LLM only narrates — it must never break the plan. If it fails at
+        # runtime (bad/expired key, rate limit, outage), degrade to the
+        # deterministic NullLLM summary instead of 500ing.
+        try:
+            summary = self._llm.explain_strategy(profile, scored, actions)
+        except Exception:
+            from ..infrastructure.llm.null_llm import NullLLM
+            summary = NullLLM().explain_strategy(profile, scored, actions)
 
         return ActionPlan(
             profile=profile,

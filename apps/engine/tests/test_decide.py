@@ -58,3 +58,16 @@ def test_llm_receives_profile_and_scored_keywords():
     profile, keywords, _ = spy.called_with
     assert profile is plan.profile
     assert keywords == plan.keywords
+
+
+class ExplodingLLM:
+    def explain_strategy(self, profile, keywords, actions):
+        raise RuntimeError("401 invalid x-api-key")
+
+
+def test_llm_failure_degrades_instead_of_crashing():
+    # A runtime LLM error must NOT break the plan — it falls back to a summary.
+    snap = SiteSnapshot(ranking_query_count=10)
+    plan = BuildStrategy(ExplodingLLM()).execute(snap, _kws())
+    assert plan.executive_summary          # non-empty fallback summary
+    assert plan.keywords                   # the deterministic core still produced
