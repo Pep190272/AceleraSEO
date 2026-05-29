@@ -141,3 +141,57 @@ def strategy_preview(body: _StrategyIn) -> dict:
             for a in plan.actions
         ],
     }
+
+
+class _IndexNowIn(BaseModel):
+    urls: list[str]
+
+
+@app.post("/act/indexnow")
+def act_indexnow(body: _IndexNowIn) -> dict:
+    """Submit URLs for instant indexing on Bing/Yandex/etc (NOT Google)."""
+    from ...infrastructure.providers.indexnow import IndexNowIndexer
+
+    settings = get_settings()
+    if not settings.indexnow_key:
+        raise HTTPException(400, "INDEXNOW_KEY not set in .env.")
+    indexer = IndexNowIndexer(settings.indexnow_key, settings.indexnow_key_location)
+    ok = indexer.submit(body.urls)
+    return {"submitted": ok, "count": len(body.urls),
+            "note": "Google does not support IndexNow; use sitemap + /act/index-status."}
+
+
+@app.get("/act/index-status")
+def act_index_status(url: str = Query(...)) -> dict:
+    """Check whether Google has indexed a URL (read-only monitor — never forces)."""
+    from ...infrastructure.google.url_inspection_adapter import URLInspectionReader
+
+    settings = get_settings()
+    creds = oauth.load_credentials(settings)
+    if creds is None:
+        raise HTTPException(401, "Not authorized. Visit /auth/google/login first.")
+    reader = URLInspectionReader(creds, settings.gsc_site_url)
+    status = reader.inspect(url)
+    return {"url": status.url, "indexed": status.indexed, "via": status.checked_via}
+
+
+@app.get("/act/proposals")
+def list_proposals() -> dict:
+    """Pending actions awaiting human approval (AUTONOMY_MODE=none default)."""
+    from ...infrastructure.persistence.proposals import ProposalRepository
+
+    repo = ProposalRepository(make_session_factory(get_settings().database_url))
+    return {"pending": repo.pending()}
+
+
+@app.post("/act/proposals/{proposal_id}/{status}")
+def update_proposal(proposal_id: int, status: str) -> dict:
+    """Approve or reject a proposed action."""
+    from ...infrastructure.persistence.proposals import ProposalRepository
+
+    if status not in ("approved", "rejected"):
+        raise HTTPException(400, "status must be 'approved' or 'rejected'.")
+    repo = ProposalRepository(make_session_factory(get_settings().database_url))
+    if not repo.set_status(proposal_id, status):
+        raise HTTPException(404, "Proposal not found.")
+    return {"id": proposal_id, "status": status}

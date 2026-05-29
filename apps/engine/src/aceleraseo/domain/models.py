@@ -131,6 +131,14 @@ class AuditIssue:
     message: str
 
 
+@dataclass(frozen=True)
+class IndexStatus:
+    """Result of monitoring a URL's presence in Google (read-only)."""
+    url: str
+    indexed: bool
+    checked_via: str = "url_inspection"
+
+
 @dataclass
 class CrawlReport:
     pages: list[CrawledPage] = field(default_factory=list)

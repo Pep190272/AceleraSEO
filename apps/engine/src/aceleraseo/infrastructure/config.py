@@ -41,6 +41,14 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     anthropic_model: str = "claude-opus-4-8"
 
+    # IndexNow (ACT — instant indexing on Bing/Yandex/etc; NOT Google).
+    indexnow_key: str = ""
+    indexnow_key_location: str = ""
+
+    # Autonomy guardrails (ADR-0002). Default: propose only, human approves.
+    autonomy_mode: str = "none"          # none | limited | full
+    max_auto_actions_per_day: int = 0
+
 
 @lru_cache
 def get_settings() -> Settings:
