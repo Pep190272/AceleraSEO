@@ -6,8 +6,6 @@ and reuses the same parse_html the plain crawler uses (contract, not behavior).
 """
 import pytest
 
-from aceleraseo.domain.ports import PageFetcher
-
 
 def test_rendering_crawler_satisfies_pagefetcher_protocol():
     # Import the class without constructing it (no browser launched).
