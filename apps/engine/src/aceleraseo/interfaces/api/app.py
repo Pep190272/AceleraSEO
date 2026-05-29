@@ -195,3 +195,33 @@ def update_proposal(proposal_id: int, status: str) -> dict:
     if not repo.set_status(proposal_id, status):
         raise HTTPException(404, "Proposal not found.")
     return {"id": proposal_id, "status": status}
+
+
+@app.get("/learn/outcome")
+def learn_outcome(action_date: str, window_days: int = 28) -> dict:
+    """Close the loop: did rankings move after the action on action_date?
+
+    Compares the persisted window before vs after the date (ISO yyyy-mm-dd).
+    """
+    from datetime import date as _date
+
+    from ...application.learn import MeasureOutcomes, summarize
+    from ...infrastructure.persistence.repository import RankingRepository
+
+    settings = get_settings()
+    if not settings.gsc_site_url:
+        raise HTTPException(400, "GSC_SITE_URL not set in .env.")
+    repo = RankingRepository(make_session_factory(settings.database_url))
+    report = MeasureOutcomes(repo).execute(
+        settings.gsc_site_url, _date.fromisoformat(action_date), window_days
+    )
+    return {
+        "summary": summarize(report),
+        "deltas": [
+            {"query": d.query, "trend": d.trend.value,
+             "position_before": d.position_before, "position_after": d.position_after,
+             "position_change": d.position_change,
+             "clicks_before": d.clicks_before, "clicks_after": d.clicks_after}
+            for d in report.deltas
+        ],
+    }

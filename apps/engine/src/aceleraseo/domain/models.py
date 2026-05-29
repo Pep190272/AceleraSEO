@@ -139,6 +139,49 @@ class IndexStatus:
     checked_via: str = "url_inspection"
 
 
+# ─────────────────────────────────────────────────────────────
+# M5 — LEARN (close the loop)
+# ─────────────────────────────────────────────────────────────
+
+class Trend(str, Enum):
+    IMPROVED = "improved"     # position got closer to 1 (lower number)
+    DECLINED = "declined"
+    STABLE = "stable"
+    NEW = "new"               # query appeared only in the 'after' window
+    LOST = "lost"             # query present 'before' but gone 'after'
+
+
+@dataclass(frozen=True)
+class OutcomeDelta:
+    """How one query moved between two measurement windows."""
+    query: str
+    position_before: float | None
+    position_after: float | None
+    clicks_before: int
+    clicks_after: int
+    trend: Trend
+
+    @property
+    def position_change(self) -> float | None:
+        if self.position_before is None or self.position_after is None:
+            return None
+        # Negative = improved (moved up the SERP).
+        return round(self.position_after - self.position_before, 2)
+
+
+@dataclass
+class OutcomeReport:
+    """The LEARN result — what changed, fed back into DECIDE next cycle."""
+    deltas: list[OutcomeDelta] = field(default_factory=list)
+
+    def by_trend(self, trend: Trend) -> list[OutcomeDelta]:
+        return [d for d in self.deltas if d.trend is trend]
+
+    @property
+    def net_clicks_change(self) -> int:
+        return sum(d.clicks_after - d.clicks_before for d in self.deltas)
+
+
 @dataclass
 class CrawlReport:
     pages: list[CrawledPage] = field(default_factory=list)
