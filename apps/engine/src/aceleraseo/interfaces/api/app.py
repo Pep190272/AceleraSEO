@@ -4,13 +4,16 @@ from __future__ import annotations
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import RedirectResponse
 
+from ...application.crawl import CrawlSite
 from ...application.sense import CollectSignals
+from ...domain.models import Severity
 from ...infrastructure.config import get_settings
 from ...infrastructure.google import oauth
 from ...infrastructure.google.ga4_adapter import GA4AnalyticsProvider
 from ...infrastructure.google.gsc_adapter import GSCRankingProvider
 from ...infrastructure.persistence.db import make_session_factory
 from ...infrastructure.persistence.repository import RankingRepository
+from ...infrastructure.providers.crawler import HttpxCrawler
 
 app = FastAPI(title="AceleraSEO — Engine", version="0.1.0")
 
@@ -59,4 +62,24 @@ def sense_run(days: int = 90) -> dict:
         "rankings_fetched": result.rankings_fetched,
         "rankings_new": result.rankings_new,
         "pages_with_conversions": result.pages_with_conversions,
+    }
+
+
+@app.post("/audit/run")
+def audit_run(start_url: str, max_pages: int = 200, max_depth: int = 5) -> dict:
+    """Crawl a site and return a severity-tagged technical SEO audit."""
+    crawler = HttpxCrawler()
+    try:
+        report = CrawlSite(crawler).execute(start_url, max_pages=max_pages, max_depth=max_depth)
+    finally:
+        crawler.close()
+    return {
+        "pages_crawled": len(report.pages),
+        "critical": report.count(Severity.CRITICAL),
+        "warning": report.count(Severity.WARNING),
+        "notice": report.count(Severity.NOTICE),
+        "issues": [
+            {"code": i.code, "severity": i.severity.value, "url": i.url, "message": i.message}
+            for i in report.issues
+        ],
     }

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
-from .models import ActionPlan, BusinessProfile, Keyword, RankingSignal
+from .models import ActionPlan, BusinessProfile, CrawledPage, Keyword, RankingSignal
 
 
 class RankingProvider(Protocol):
@@ -19,6 +19,11 @@ class AnalyticsProvider(Protocol):
 class MarketProvider(Protocol):
     """Keyword volumes / difficulty / SERP — DataForSEO or SerpApi adapter."""
     def keyword_metrics(self, terms: list[str], location: str) -> list[Keyword]: ...
+
+
+class PageFetcher(Protocol):
+    """Fetch + parse a single URL into a CrawledPage — implemented by the crawler."""
+    def fetch(self, url: str) -> CrawledPage: ...
 
 
 class Indexer(Protocol):

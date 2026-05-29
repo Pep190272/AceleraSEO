@@ -77,3 +77,47 @@ class ActionPlan:
     profile: BusinessProfile
     keywords: list[ScoredKeyword] = field(default_factory=list)
     actions: list[Action] = field(default_factory=list)
+
+
+# ─────────────────────────────────────────────────────────────
+# M2 — Technical crawler / audit
+# ─────────────────────────────────────────────────────────────
+
+class Severity(str, Enum):
+    CRITICAL = "critical"   # blocks ranking/indexing — fix now
+    WARNING = "warning"     # hurts SEO — fix soon
+    NOTICE = "notice"       # improvement opportunity
+
+
+@dataclass(frozen=True)
+class CrawledPage:
+    """A fetched + parsed page. Pure data — the adapter builds it, audit reads it."""
+    url: str
+    status_code: int
+    title: str | None = None
+    meta_description: str | None = None
+    h1s: tuple[str, ...] = ()
+    canonical: str | None = None
+    internal_links: tuple[str, ...] = ()
+    external_links: tuple[str, ...] = ()
+    word_count: int = 0
+    has_schema: bool = False
+    robots_noindex: bool = False
+
+
+@dataclass(frozen=True)
+class AuditIssue:
+    """One finding on one URL — severity-tagged with a cited reason."""
+    code: str
+    severity: Severity
+    url: str
+    message: str
+
+
+@dataclass
+class CrawlReport:
+    pages: list[CrawledPage] = field(default_factory=list)
+    issues: list[AuditIssue] = field(default_factory=list)
+
+    def count(self, severity: Severity) -> int:
+        return sum(1 for i in self.issues if i.severity is severity)
