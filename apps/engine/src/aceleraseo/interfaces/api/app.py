@@ -66,9 +66,18 @@ def sense_run(days: int = 90) -> dict:
 
 
 @app.post("/audit/run")
-def audit_run(start_url: str, max_pages: int = 200, max_depth: int = 5) -> dict:
-    """Crawl a site and return a severity-tagged technical SEO audit."""
-    crawler = HttpxCrawler()
+def audit_run(start_url: str, max_pages: int = 200, max_depth: int = 5,
+              render: bool = False) -> dict:
+    """Crawl a site and return a severity-tagged technical SEO audit.
+
+    render=True drives a headless browser (Playwright) for JS-rendered / SPA
+    sites where the raw HTML has no links. Requires the `render` extra.
+    """
+    if render:
+        from ...infrastructure.providers.rendering_crawler import RenderingCrawler
+        crawler = RenderingCrawler()
+    else:
+        crawler = HttpxCrawler()
     try:
         report = CrawlSite(crawler).execute(start_url, max_pages=max_pages, max_depth=max_depth)
     finally:

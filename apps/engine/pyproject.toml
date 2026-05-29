@@ -22,6 +22,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.2", "ruff>=0.5", "mypy>=1.10"]
+# JS-rendering crawler for SPA / client-rendered sites (run `playwright install chromium`).
+render = ["playwright>=1.44"]
 
 [tool.ruff]
 line-length = 100
@@ -29,3 +31,6 @@ target-version = "py312"
 
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+markers = [
+    "render: live browser tests (Playwright + network) — opt in with `-m render`",
+]
