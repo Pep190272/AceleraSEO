@@ -68,3 +68,6 @@ crawl-cache/
 *.swp
 .DS_Store
 Thumbs.db
+
+# Local agent tooling (skill registry cache) — not part of the project
+.atl/

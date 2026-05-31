@@ -34,6 +34,38 @@ def make_discoverer(settings: Settings):
     return None
 
 
+def verify_llm(settings: Settings) -> dict:
+    """Check the configured LLM key without spending generation tokens.
+
+    Returns {"valid": bool, "provider", "model", "reason"?}. Uses models.retrieve
+    so a success proves BOTH that the key authenticates AND that the configured
+    model is reachable for this account — the two ways a saved key silently fails.
+    """
+    provider = settings.llm_provider
+    model = settings.anthropic_model
+    if provider != "anthropic":
+        return {"valid": False, "provider": provider, "model": model,
+                "reason": f"Provider '{provider}' has no verification yet."}
+    if not _is_real_key(settings.anthropic_api_key):
+        return {"valid": False, "provider": provider, "model": model,
+                "reason": "No API key configured."}
+
+    import anthropic
+
+    try:
+        anthropic.Anthropic(api_key=settings.anthropic_api_key).models.retrieve(model)
+    except anthropic.AuthenticationError:
+        return {"valid": False, "provider": provider, "model": model,
+                "reason": "The API key was rejected (authentication failed)."}
+    except anthropic.NotFoundError:
+        return {"valid": False, "provider": provider, "model": model,
+                "reason": f"Key is valid but model '{model}' is not available for this account."}
+    except anthropic.APIError as exc:  # network, rate limit, etc.
+        return {"valid": False, "provider": provider, "model": model,
+                "reason": f"Could not reach Anthropic: {exc}"}
+    return {"valid": True, "provider": provider, "model": model}
+
+
 def make_market(settings: Settings):
     """DataForSEO market provider, or None if credentials are absent."""
     if _is_real_key(settings.dataforseo_login) and _is_real_key(settings.dataforseo_password):

@@ -1,7 +1,7 @@
 # Session handoff — AceleraSEO
 
 Snapshot of where the project stands, so the next session starts with full context.
-Last updated: 2026-05-29.
+Last updated: 2026-05-31.
 
 ## What AceleraSEO is
 
@@ -45,6 +45,7 @@ Hexagonal (ports & adapters). Two apps in a monorepo:
 | Settings | UI-configured secrets (no .env editing); DEMO_MODE guard | ✅ |
 | Discovery | Describe-your-niche → keywords (LLM + DataForSEO enrichment) | ✅ |
 | i18n | Spanish default + ES/EN toggle | ✅ |
+| Key verify | Settings "Test AI connection" → validates LLM key + model, no tokens | ✅ |
 
 ## Verified hard limits (these shape the design — see docs/API-LIMITS.md)
 
@@ -81,17 +82,25 @@ raw number. The impossible high-difficulty head term sinks to the bottom — tha
 - **npm audit:** Next bumped 15.1.6 → 15.5.18 (cleared critical/high). 2 *moderate* remain
   that only `npm audit fix --force` "fixes" by downgrading to next@9 (2020) — REJECTED.
   GitHub Dependabot may still show a stale higher count until it re-scans.
-- **Discovery is untested against a real LLM call** — the parser + use case are unit-tested
-  with fakes, and the demo guard (422) is verified, but a real Anthropic discovery run has
-  NOT been done yet. First task to validate in Private mode.
+- **Discovery validated against a real LLM call (2026-05-31)** — ran the Private stack, pasted
+  a real Anthropic key in Settings, and "Descubrir palabras de mi nicho" returned real keywords.
+  Proof: engine logged `POST /strategy/discover 200` (the endpoint 422s without a real key and
+  500s on a bad key — there is no NullLLM fallback for discovery, so a 200 is conclusive).
+
+## Settings — "Test AI connection" (added 2026-05-31)
+
+Pasting+saving an LLM key gave no signal it was valid; you only found out when an operation
+failed. Fixed: the Settings tab has a **"Test AI connection"** button →
+`POST /settings/verify-llm` → `factory.verify_llm()` calls Anthropic `models.retrieve(model)`,
+which proves BOTH key auth AND model reachability **without spending generation tokens**. UI
+shows green ✓ `Key valid (model)` or red ✗ with the reason (rejected key / model not available /
+unreachable). Verdict clears on save.
 
 ## Next session — suggested order
 
-1. **Validate discovery for real:** run Private stack, paste Anthropic key in Settings,
-   try "Descubrir palabras de mi nicho" with a real business → confirm real keywords come back.
-2. **Deploy the hosted demo** to a VPS / Fly.io / Railway with `DEMO_MODE=true` (needs the
+1. **Deploy the hosted demo** to a VPS / Fly.io / Railway with `DEMO_MODE=true` (needs the
    user's account — agent can't deploy).
-3. Optional: Google OAuth flow in the UI → unlocks SENSE/ACT/LEARN panels (currently engine-
+2. Optional: Google OAuth flow in the UI → unlocks SENSE/ACT/LEARN panels (currently engine-
    only via API). Market adapters (Majestic Trust Flow as authority proxy, SerpApi).
 
 ## Environment gotchas (save future debugging)

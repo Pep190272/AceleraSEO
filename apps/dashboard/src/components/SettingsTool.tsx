@@ -24,6 +24,10 @@ export default function SettingsTool() {
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(true);
+  const [verifying, setVerifying] = useState(false);
+  const [verify, setVerify] = useState<{ valid: boolean; model?: string; reason?: string } | null>(
+    null,
+  );
 
   async function load() {
     setLoading(true);
@@ -57,8 +61,23 @@ export default function SettingsTool() {
       setEdits({});
       setFields(data.fields ?? fields);
       setStatus(t("set.saved"));
+      setVerify(null); // saved key changed → previous verdict is stale
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Save failed");
+    }
+  }
+
+  async function verifyKey() {
+    setVerifying(true);
+    setVerify(null);
+    try {
+      const res = await fetch("/api/settings/verify-llm", { method: "POST" });
+      const data = await res.json();
+      setVerify({ valid: Boolean(data?.valid), model: data?.model, reason: data?.reason });
+    } catch {
+      setVerify({ valid: false, reason: t("common.unreachable") });
+    } finally {
+      setVerifying(false);
     }
   }
 
@@ -120,9 +139,32 @@ export default function SettingsTool() {
       ))}
 
       {!demo && (
-        <button className="primary" onClick={save} disabled={!dirty}>
-          {t("set.save")}
-        </button>
+        <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+          <button className="primary" onClick={save} disabled={!dirty}>
+            {t("set.save")}
+          </button>
+          <button onClick={verifyKey} disabled={verifying}>
+            {verifying ? t("set.verifying") : t("set.verify")}
+          </button>
+        </div>
+      )}
+      {!demo && (
+        <p className="hint" style={{ marginTop: "0.5rem" }}>
+          {t("set.verify.hint")}
+        </p>
+      )}
+      {verify && (
+        <p
+          style={{
+            marginTop: "0.75rem",
+            fontWeight: 600,
+            color: verify.valid ? "var(--accent)" : "var(--warn)",
+          }}
+        >
+          {verify.valid
+            ? `${t("set.verify.ok")}${verify.model ? ` (${verify.model})` : ""}`
+            : `${t("set.verify.fail")}${verify.reason ? `: ${verify.reason}` : ""}`}
+        </p>
       )}
       {status && (
         <p className="hint" style={{ marginTop: "0.75rem" }}>

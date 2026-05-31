@@ -1,7 +1,7 @@
 import pytest
 
 from aceleraseo.infrastructure.config import Settings
-from aceleraseo.infrastructure.llm.factory import _is_real_key, make_llm
+from aceleraseo.infrastructure.llm.factory import _is_real_key, make_llm, verify_llm
 from aceleraseo.infrastructure.llm.null_llm import NullLLM
 
 
@@ -34,3 +34,21 @@ def test_real_key_selects_anthropic_adapter():
     llm = make_llm(_settings(anthropic_api_key="sk-ant-api03-genuinevalue123"))
     assert not isinstance(llm, NullLLM)
     assert type(llm).__name__ == "AnthropicLLM"
+
+
+def test_verify_llm_reports_missing_key_without_network():
+    # No real key -> invalid verdict, and crucially no Anthropic call is attempted.
+    result = verify_llm(_settings(anthropic_api_key=""))
+    assert result["valid"] is False
+    assert "key" in result["reason"].lower()
+
+
+def test_verify_llm_rejects_placeholder_key_without_network():
+    result = verify_llm(_settings(anthropic_api_key="YOUR_ANTHROPIC_API_KEY"))
+    assert result["valid"] is False
+
+
+def test_verify_llm_handles_unknown_provider():
+    result = verify_llm(_settings(anthropic_api_key="sk-ant-api03-x", llm_provider="ollama"))
+    assert result["valid"] is False
+    assert "ollama" in result["reason"]

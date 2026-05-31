@@ -54,6 +54,17 @@ def update_settings(body: _SettingsIn) -> dict:
     return {"saved": True, "fields": describe(get_settings())}
 
 
+@app.post("/settings/verify-llm")
+def verify_llm_key() -> dict:
+    """Check the currently-saved LLM key against Anthropic (no tokens spent).
+
+    Lets the Settings tab confirm a pasted key is active and valid instead of
+    leaving the user to find out only when a later operation fails."""
+    from ...infrastructure.llm.factory import verify_llm
+
+    return verify_llm(get_settings())
+
+
 @app.get("/auth/google/login")
 def google_login() -> RedirectResponse:
     settings = get_settings()
