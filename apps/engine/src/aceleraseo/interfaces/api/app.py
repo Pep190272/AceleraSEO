@@ -226,6 +226,63 @@ def _serialise_plan(plan) -> dict:
     }
 
 
+class _CompetitorIn(BaseModel):
+    domain: str
+    location: str = ""
+    language: str = "es"
+
+
+@app.post("/competitors/analyze")
+def competitors_analyze(body: _CompetitorIn) -> dict:
+    """Find top organic competitors for a domain and their ranked keywords.
+
+    Requires DataForSEO credentials. Returns a 503 with a clear message if
+    they are absent so the UI can surface a helpful error rather than a raw 500.
+    """
+    from ...application.competitors import (
+        MAX_COMPETITORS,
+        MAX_KEYWORDS_PER_COMPETITOR,
+        AnalyzeCompetitors,
+    )
+    from ...infrastructure.llm.factory import make_competitor
+
+    if not body.domain.strip():
+        raise HTTPException(422, "A target domain is required.")
+
+    settings = get_settings()
+    provider = make_competitor(settings)
+    if provider is None:
+        raise HTTPException(
+            503,
+            "Competitor analysis requires DataForSEO credentials (DATAFORSEO_LOGIN + "
+            "DATAFORSEO_PASSWORD). Configure them in the Settings tab.",
+        )
+
+    competitors = AnalyzeCompetitors(provider).execute(
+        target=body.domain.strip(),
+        location=body.location,
+        language=body.language,
+        max_competitors=MAX_COMPETITORS,
+        max_keywords_per_competitor=MAX_KEYWORDS_PER_COMPETITOR,
+    )
+    return {
+        "domain": body.domain.strip(),
+        "competitors": [
+            {
+                "domain": c.domain,
+                "common_keywords": c.common_keywords,
+                "avg_position": c.avg_position,
+                "organic_traffic": c.organic_traffic,
+                "ranked_keywords": [
+                    {"term": kw.term, "position": kw.position, "search_volume": kw.search_volume}
+                    for kw in c.ranked_keywords
+                ],
+            }
+            for c in competitors
+        ],
+    }
+
+
 class _IndexNowIn(BaseModel):
     urls: list[str]
 

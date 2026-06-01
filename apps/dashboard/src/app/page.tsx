@@ -3,13 +3,14 @@
 import { useState } from "react";
 
 import AuditTool from "@/components/AuditTool";
+import CompetitorTool from "@/components/CompetitorTool";
 import EngineStatus from "@/components/EngineStatus";
 import LangToggle from "@/components/LangToggle";
 import SettingsTool from "@/components/SettingsTool";
 import StrategyTool from "@/components/StrategyTool";
 import { useT } from "@/lib/i18n";
 
-type Tab = "strategy" | "audit" | "settings";
+type Tab = "strategy" | "competitors" | "audit" | "settings";
 
 export default function Home() {
   const { t } = useT();
@@ -36,6 +37,9 @@ export default function Home() {
         <button className={`tab ${tab === "strategy" ? "active" : ""}`} onClick={() => setTab("strategy")}>
           {t("nav.strategy")}
         </button>
+        <button className={`tab ${tab === "competitors" ? "active" : ""}`} onClick={() => setTab("competitors")}>
+          {t("nav.competitors")}
+        </button>
         <button className={`tab ${tab === "audit" ? "active" : ""}`} onClick={() => setTab("audit")}>
           {t("nav.audit")}
         </button>
@@ -45,6 +49,7 @@ export default function Home() {
       </div>
 
       {tab === "strategy" && <StrategyTool />}
+      {tab === "competitors" && <CompetitorTool />}
       {tab === "audit" && <AuditTool />}
       {tab === "settings" && <SettingsTool />}
 
