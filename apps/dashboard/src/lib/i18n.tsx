@@ -80,6 +80,33 @@ const STRINGS: Record<Lang, Dict> = {
     "audit.col.issue": "Problema",
     "audit.col.url": "URL",
 
+    // Competitors
+    "nav.competitors": "Competidores",
+    "comp.lead":
+      "Ingresá un dominio y descubrí quiénes son sus principales competidores orgánicos y para qué palabras clave ranquean.",
+    "comp.domain.label": "Dominio a analizar",
+    "comp.domain.ph": "ejemplo.com",
+    "comp.location.label": "Ubicación (opcional)",
+    "comp.location.ph": "España",
+    "comp.run": "Analizar competidores →",
+    "comp.analyzing": "Analizando…",
+    "comp.error.nodomain": "Ingresá un dominio para analizar.",
+    "comp.res.title": "Competidores encontrados",
+    "comp.res.empty": "No se encontraron competidores para este dominio.",
+    "comp.res.hint":
+      "Fuente: DataForSEO Labs. Se muestran hasta 5 competidores con hasta 10 palabras clave cada uno.",
+    "comp.col.domain": "Dominio competidor",
+    "comp.col.common": "Palabras comunes",
+    "comp.col.avgpos": "Pos. media",
+    "comp.col.traffic": "Tráfico estimado",
+    "comp.col.keywords": "Palabras clave",
+    "comp.kw.show": "Ver {n} palabras",
+    "comp.kw.hide": "Ocultar palabras",
+    "comp.kw.none": "Sin datos",
+    "comp.kw.col.term": "Término",
+    "comp.kw.col.pos": "Posición",
+    "comp.kw.col.vol": "Volumen",
+
     // Settings
     "set.loading": "Cargando ajustes…",
     "set.demo":
@@ -152,6 +179,33 @@ const STRINGS: Record<Lang, Dict> = {
       "Verdict = how winnable a keyword is for YOUR authority, balancing search volume against difficulty. Higher score = better bet.",
     "res.actions.title": "Do this, in order",
     "res.actions.fixfirst": "fix first",
+
+    // Competitors
+    "nav.competitors": "Competitors",
+    "comp.lead":
+      "Enter a domain and discover its top organic competitors along with the keywords they rank for.",
+    "comp.domain.label": "Domain to analyze",
+    "comp.domain.ph": "example.com",
+    "comp.location.label": "Location (optional)",
+    "comp.location.ph": "Spain",
+    "comp.run": "Analyze competitors →",
+    "comp.analyzing": "Analyzing…",
+    "comp.error.nodomain": "Enter a domain to analyze.",
+    "comp.res.title": "Competitors found",
+    "comp.res.empty": "No competitors found for this domain.",
+    "comp.res.hint":
+      "Source: DataForSEO Labs. Shows up to 5 competitors with up to 10 keywords each.",
+    "comp.col.domain": "Competitor domain",
+    "comp.col.common": "Common keywords",
+    "comp.col.avgpos": "Avg. position",
+    "comp.col.traffic": "Est. traffic",
+    "comp.col.keywords": "Keywords",
+    "comp.kw.show": "Show {n} keywords",
+    "comp.kw.hide": "Hide keywords",
+    "comp.kw.none": "No data",
+    "comp.kw.col.term": "Term",
+    "comp.kw.col.pos": "Position",
+    "comp.kw.col.vol": "Volume",
 
     "audit.label": "Site URL to audit",
     "audit.run": "Run technical audit",

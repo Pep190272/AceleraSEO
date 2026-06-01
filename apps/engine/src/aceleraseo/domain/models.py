@@ -189,3 +189,25 @@ class CrawlReport:
 
     def count(self, severity: Severity) -> int:
         return sum(1 for i in self.issues if i.severity is severity)
+
+
+# ─────────────────────────────────────────────────────────────
+# Competitor analysis
+# ─────────────────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class RankedKeyword:
+    """A keyword a competitor domain currently ranks for."""
+    term: str
+    position: float           # avg position in SERP (1..100)
+    search_volume: int        # monthly search volume (0 if unknown)
+
+
+@dataclass(frozen=True)
+class CompetitorDomain:
+    """One competitor domain returned by the competitor analysis feature."""
+    domain: str
+    common_keywords: int                # keywords shared with the target domain
+    avg_position: float | None          # mean SERP position across their ranked kws; None when no keywords available
+    organic_traffic: int                # estimated monthly organic traffic (DataForSEO)
+    ranked_keywords: tuple[RankedKeyword, ...] = ()   # top N keywords they rank for

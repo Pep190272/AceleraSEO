@@ -72,3 +72,15 @@ def make_market(settings: Settings):
         from ..providers.dataforseo import DataForSEOMarketProvider
         return DataForSEOMarketProvider(settings.dataforseo_login, settings.dataforseo_password)
     return None
+
+
+def make_competitor(settings: Settings):
+    """DataForSEO competitor provider, or None if credentials are absent.
+
+    Uses the same DataForSEO credentials as the market provider — no extra setup
+    required if the user already has DataForSEO configured.
+    """
+    if _is_real_key(settings.dataforseo_login) and _is_real_key(settings.dataforseo_password):
+        from ..providers.dataforseo import DataForSEOMarketProvider
+        return DataForSEOMarketProvider(settings.dataforseo_login, settings.dataforseo_password)
+    return None

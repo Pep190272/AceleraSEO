@@ -6,6 +6,7 @@ from typing import Protocol
 from .models import (
     Action,
     BusinessProfile,
+    CompetitorDomain,
     CrawledPage,
     Keyword,
     RankingSignal,
@@ -68,3 +69,19 @@ class KeywordDiscoverer(Protocol):
     def discover(
         self, description: str, location: str, language: str, max_keywords: int
     ) -> list[Keyword]: ...
+
+
+class CompetitorProvider(Protocol):
+    """Fetch competitor domains for a target domain and their ranked keywords.
+
+    Implemented by the DataForSEO adapter. Both steps (competitors_domain/live
+    and ranked_keywords/live) are encapsulated here so use-cases stay clean.
+    """
+    def fetch_competitors(
+        self,
+        target: str,
+        location: str,
+        language: str,
+        max_competitors: int,
+        max_keywords_per_competitor: int,
+    ) -> list[CompetitorDomain]: ...
