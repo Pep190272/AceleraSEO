@@ -1,17 +1,10 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { useT } from "@/lib/i18n";
-
-type Scored = { term: string; opportunity: number; rationale: string };
-type Action = { kind: string; target_url: string; risk: string; description: string };
-type Plan = {
-  profile: { type: string; maturity: string; authority_band: string; is_geo_relevant: boolean };
-  executive_summary: string;
-  keywords: Scored[];
-  actions: Action[];
-};
+import { useScrollIntoView } from "@/lib/hooks/useScrollIntoView";
+import type { Action, Plan, Scored } from "@/lib/types/api";
 
 const MATURITY = [
   { key: "strat.mat.new", value: 8 },
@@ -59,7 +52,7 @@ export default function StrategyTool() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const resultRef = useRef<HTMLDivElement>(null);
+  const { ref: resultRef, trigger: scrollToResult } = useScrollIntoView();
 
   async function run() {
     setLoading(true);
@@ -84,7 +77,7 @@ export default function StrategyTool() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.detail || data?.error || "Engine error");
       setPlan(data);
-      setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+      scrollToResult();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Request failed");
     } finally {

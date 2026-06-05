@@ -1,21 +1,10 @@
 "use client";
 
-import React, { useRef, useState } from "react";
+import React, { useState } from "react";
 
 import { useT } from "@/lib/i18n";
-
-type RankedKeyword = { term: string; position: number; search_volume: number };
-type Competitor = {
-  domain: string;
-  common_keywords: number;
-  avg_position: number | null;
-  organic_traffic: number;
-  ranked_keywords: RankedKeyword[];
-};
-type CompetitorResult = {
-  domain: string;
-  competitors: Competitor[];
-};
+import { useScrollIntoView } from "@/lib/hooks/useScrollIntoView";
+import type { Competitor, CompetitorResult, RankedKeyword } from "@/lib/types/api";
 
 export default function CompetitorTool() {
   const { t, lang } = useT();
@@ -25,7 +14,7 @@ export default function CompetitorTool() {
   const [expandedDomain, setExpandedDomain] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const resultRef = useRef<HTMLDivElement>(null);
+  const { ref: resultRef, trigger: scrollToResult } = useScrollIntoView();
 
   async function run() {
     if (!domain.trim()) {
@@ -45,7 +34,7 @@ export default function CompetitorTool() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.detail || data?.error || "Engine error");
       setResult(data);
-      setTimeout(() => resultRef.current?.scrollIntoView({ behavior: "smooth" }), 50);
+      scrollToResult();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Request failed");
     } finally {
