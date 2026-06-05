@@ -3,15 +3,7 @@
 import { useState } from "react";
 
 import { useT } from "@/lib/i18n";
-
-type Issue = { code: string; severity: string; url: string; message: string };
-type Report = {
-  pages_crawled: number;
-  critical: number;
-  warning: number;
-  notice: number;
-  issues: Issue[];
-};
+import type { Issue, Report } from "@/lib/types/api";
 
 export default function AuditTool() {
   const { t } = useT();
