@@ -1,14 +1,25 @@
-import { NextResponse } from "next/server";
-
-import { engineFetch } from "@/lib/engine";
+import { badRequest, proxyToEngine } from "@/lib/route-helpers";
 
 // Server-side proxy to the engine's /competitors/analyze.
 // DataForSEO credentials stay server-side — ENGINE_URL is never exposed to the client.
 export async function POST(req: Request) {
   const payload = await req.json();
-  const { ok, status, body } = await engineFetch("/competitors/analyze", {
+
+  if (
+    payload === null ||
+    typeof payload !== "object" ||
+    Array.isArray(payload)
+  ) {
+    return badRequest("Request body must be a JSON object");
+  }
+
+  const { domain } = payload as Record<string, unknown>;
+  if (!domain || typeof domain !== "string") {
+    return badRequest("domain is required and must be a string");
+  }
+
+  return proxyToEngine("/competitors/analyze", {
     method: "POST",
     body: JSON.stringify(payload),
   });
-  return NextResponse.json(body, { status: ok ? 200 : status });
 }
