@@ -13,20 +13,22 @@ type ApiErrorEnvelope = {
  * Reads the server error envelope `{ error?, detail? }` and returns a
  * human-readable display message.
  *
- * Resolution order:
- *   1. `error` string from the envelope
- *   2. `detail` if it is a plain string
- *   3. Fallback: "Unexpected error"
+ * Resolution order matches the dashboard's original inline handling
+ * (`data?.detail || data?.error || "Engine error"`) so messages stay
+ * byte-identical after the refactor:
+ *   1. `detail` if it is a plain string (FastAPI puts the human message here)
+ *   2. `error` string from the envelope
+ *   3. Fallback: "Engine error"
  */
 export function extractApiError(body: unknown): string {
   const envelope = body as ApiErrorEnvelope;
-  if (typeof envelope?.error === "string" && envelope.error) {
-    return envelope.error;
-  }
   if (typeof envelope?.detail === "string" && envelope.detail) {
     return envelope.detail;
   }
-  return "Unexpected error";
+  if (typeof envelope?.error === "string" && envelope.error) {
+    return envelope.error;
+  }
+  return "Engine error";
 }
 
 /**
