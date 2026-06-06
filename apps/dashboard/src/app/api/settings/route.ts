@@ -1,19 +1,25 @@
-import { NextResponse } from "next/server";
-
-import { engineFetch } from "@/lib/engine";
+import { badRequest, proxyToEngine } from "@/lib/route-helpers";
 
 // Read the settings schema (secrets masked) from the engine.
 export async function GET() {
-  const { ok, status, body } = await engineFetch("/settings");
-  return NextResponse.json(body, { status: ok ? 200 : status });
+  return proxyToEngine("/settings");
 }
 
 // Persist UI-provided config to the engine (blocked engine-side in demo mode).
 export async function POST(req: Request) {
-  const values = await req.json();
-  const { ok, status, body } = await engineFetch("/settings", {
+  const body = await req.json();
+
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    return badRequest("Request body must be a JSON object");
+  }
+
+  const { values } = body as Record<string, unknown>;
+  if (values === undefined || values === null || typeof values !== "object") {
+    return badRequest("values is required and must be an object");
+  }
+
+  return proxyToEngine("/settings", {
     method: "POST",
     body: JSON.stringify({ values }),
   });
-  return NextResponse.json(body, { status: ok ? 200 : status });
 }
