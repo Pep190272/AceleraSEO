@@ -75,7 +75,7 @@ cp .env.example .env   # fill in your keys
 
 ## Status
 
-🚧 **Design phase.** This repo currently contains the architecture, the verified API-limits research, and the project scaffold. Implementation roadmap in [docs/ROADMAP.md](./docs/ROADMAP.md).
+🚧 **Design phase.** in active development - engine + dashboard running.
 
 ## License
 
