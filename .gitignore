@@ -71,3 +71,7 @@ Thumbs.db
 
 # Local agent tooling (skill registry cache) — not part of the project
 .atl/
+.mcp.json
+
+# Personal / strategy docs (Premod job) — not part of the project
+Premod/
