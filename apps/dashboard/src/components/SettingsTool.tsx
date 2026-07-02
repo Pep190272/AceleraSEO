@@ -28,6 +28,8 @@ export default function SettingsTool() {
   const [verify, setVerify] = useState<{ valid: boolean; model?: string; reason?: string } | null>(
     null,
   );
+  const [verifyingCms, setVerifyingCms] = useState(false);
+  const [verifyCms, setVerifyCms] = useState<{ ok: boolean; detail?: string } | null>(null);
 
   async function load() {
     setLoading(true);
@@ -78,6 +80,20 @@ export default function SettingsTool() {
       setVerify({ valid: false, reason: t("common.unreachable") });
     } finally {
       setVerifying(false);
+    }
+  }
+
+  async function verifyCmsKey() {
+    setVerifyingCms(true);
+    setVerifyCms(null);
+    try {
+      const res = await fetch("/api/settings/verify-cms", { method: "POST" });
+      const data = await res.json();
+      setVerifyCms({ ok: Boolean(data?.ok), detail: data?.detail });
+    } catch {
+      setVerifyCms({ ok: false, detail: t("common.unreachable") });
+    } finally {
+      setVerifyingCms(false);
     }
   }
 
@@ -146,6 +162,9 @@ export default function SettingsTool() {
           <button onClick={verifyKey} disabled={verifying}>
             {verifying ? t("set.verifying") : t("set.verify")}
           </button>
+          <button onClick={verifyCmsKey} disabled={verifyingCms}>
+            {verifyingCms ? t("set.noor.verifying") : t("set.noor.verify")}
+          </button>
         </div>
       )}
       {!demo && (
@@ -164,6 +183,24 @@ export default function SettingsTool() {
           {verify.valid
             ? `${t("set.verify.ok")}${verify.model ? ` (${verify.model})` : ""}`
             : `${t("set.verify.fail")}${verify.reason ? `: ${verify.reason}` : ""}`}
+        </p>
+      )}
+      {!demo && (
+        <p className="hint" style={{ marginTop: "0.5rem" }}>
+          {t("set.noor.verify.hint")}
+        </p>
+      )}
+      {verifyCms && (
+        <p
+          style={{
+            marginTop: "0.75rem",
+            fontWeight: 600,
+            color: verifyCms.ok ? "var(--accent)" : "var(--warn)",
+          }}
+        >
+          {verifyCms.ok
+            ? `${t("set.noor.verify.ok")}${verifyCms.detail ? ` (${verifyCms.detail})` : ""}`
+            : `${t("set.noor.verify.fail")}${verifyCms.detail ? `: ${verifyCms.detail}` : ""}`}
         </p>
       )}
       {status && (

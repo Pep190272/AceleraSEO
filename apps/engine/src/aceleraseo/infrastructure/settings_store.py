@@ -55,6 +55,11 @@ SCHEMA: list[Field] = [
           "none = propose only (safe default) · limited · full.", "none"),
     Field("max_auto_actions_per_day", "Max auto actions/day", "Safety", False,
           "Hard cap when autonomy is not 'none'.", "0"),
+    Field("noor_base_url", "Noor base URL", "Noor CMS", False,
+          "Base URL of the Noor site to manage, e.g. https://construccionesnoor.cloud.",
+          "https://construccionesnoor.cloud"),
+    Field("noor_api_key", "Noor API key", "Noor CMS", True,
+          "X-API-Key used to authenticate against the Noor SEO API."),
 ]
 
 _KEYS = {f.key for f in SCHEMA}

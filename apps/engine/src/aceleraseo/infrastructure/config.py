@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     indexnow_key: str = ""
     indexnow_key_location: str = ""
 
+    # Noor CMS integration — on-page SEO management for the external Noor site.
+    noor_base_url: str = ""
+    noor_api_key: str = ""
+
     # Autonomy guardrails (ADR-0002). Default: propose only, human approves.
     autonomy_mode: str = "none"          # none | limited | full
     max_auto_actions_per_day: int = 0

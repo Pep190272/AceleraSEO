@@ -84,3 +84,48 @@ def make_competitor(settings: Settings):
         from ..providers.dataforseo import DataForSEOMarketProvider
         return DataForSEOMarketProvider(settings.dataforseo_login, settings.dataforseo_password)
     return None
+
+
+def make_cms(settings: Settings):
+    """Noor CMS adapter, or None if base URL or API key are absent/placeholder.
+
+    Both noor_base_url and noor_api_key must be real values — mirrors the
+    make_competitor pattern so the API surface can return 503 when not configured.
+    """
+    if _is_real_key(settings.noor_base_url) and _is_real_key(settings.noor_api_key):
+        from ..providers.noor import NoorCMSAdapter
+        return NoorCMSAdapter(settings.noor_base_url, settings.noor_api_key)
+    return None
+
+
+def verify_cms(settings: Settings) -> dict:
+    """Probe the Noor API key and connectivity without making a write.
+
+    Returns {"ok": bool, "detail": str}.  Mirrors verify_llm's contract so
+    the Settings tab can use the same verification-button pattern.
+
+    The detail reflects the actual failure cause:
+      - NoorCMSError  → auth/HTTP problem; the exception message is passed through.
+      - httpx.RequestError → network/timeout; yields a clear "could not reach" message.
+      - Success → friendly confirmation including the base URL.
+    """
+    from ..providers.noor import NoorCMSAdapter, NoorCMSError
+
+    if not _is_real_key(settings.noor_base_url):
+        return {"ok": False, "detail": "Noor base URL is not configured."}
+    if not _is_real_key(settings.noor_api_key):
+        return {"ok": False, "detail": "Noor API key is not configured."}
+
+    import httpx
+
+    adapter = NoorCMSAdapter(settings.noor_base_url, settings.noor_api_key)
+    try:
+        adapter.verify()
+    except NoorCMSError as exc:
+        return {"ok": False, "detail": str(exc)}
+    except httpx.RequestError:
+        return {
+            "ok": False,
+            "detail": f"Could not reach Noor at {settings.noor_base_url} — check the URL and network connectivity.",
+        }
+    return {"ok": True, "detail": f"Connected to {settings.noor_base_url}"}

@@ -211,3 +211,67 @@ class CompetitorDomain:
     avg_position: float | None          # mean SERP position across their ranked kws; None when no keywords available
     organic_traffic: int                # estimated monthly organic traffic (DataForSEO)
     ranked_keywords: tuple[RankedKeyword, ...] = ()   # top N keywords they rank for
+
+
+# ─────────────────────────────────────────────────────────────
+# CMS on-page management (Noor first adapter; generic port)
+# ─────────────────────────────────────────────────────────────
+
+@dataclass(frozen=True)
+class SeoPage:
+    """One page managed by the CMS's SEO layer.
+
+    url is the canonical url_path (e.g. '/servicios').  All heading/meta fields
+    are optional — a PUT to the CMS adapter must send them all (replace, not patch).
+    """
+    url: str
+    h1: str
+    h2: str | None = None
+    hero_title: str | None = None
+    meta_title: str | None = None
+    meta_description: str | None = None
+
+
+@dataclass(frozen=True)
+class KeywordStats:
+    total: int
+    active: int
+    urls_configured: tuple[str, ...] = ()
+    urls_missing_meta: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class TextStats:
+    total: int
+    active: int
+    urls_configured: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class ImageStats:
+    total: int
+    portfolio_images: int
+    portfolio_missing_alt: int
+    contenido_multimedia: int
+
+
+@dataclass(frozen=True)
+class BlogStats:
+    total_posts: int
+    posts_without_cover: int
+    posts_without_meta: int
+
+
+@dataclass(frozen=True)
+class PortfolioStats:
+    published: int
+
+
+@dataclass(frozen=True)
+class SeoAudit:
+    """Aggregated SEO health for the managed site — mirrors Noor's /api/seo/audit shape."""
+    keywords: KeywordStats
+    textos: TextStats
+    images: ImageStats
+    blog: BlogStats
+    portfolio: PortfolioStats

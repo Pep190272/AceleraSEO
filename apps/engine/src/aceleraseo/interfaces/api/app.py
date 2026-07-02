@@ -226,6 +226,149 @@ def _serialise_plan(plan) -> dict:
     }
 
 
+# ── CMS on-page management endpoints ─────────────────────────
+
+@app.get("/cms/audit")
+def cms_audit() -> dict:
+    """Return the SEO health audit for the managed Noor site.
+
+    Returns 503 with a clear message when Noor credentials are not configured,
+    mirroring the /competitors/analyze pattern so the UI can surface a helpful
+    message rather than a raw 500.
+    """
+    from ...application.cms import GetSiteAudit
+    from ...infrastructure.llm.factory import make_cms
+
+    settings = get_settings()
+    cms = make_cms(settings)
+    if cms is None:
+        raise HTTPException(
+            503,
+            "Noor CMS integration requires NOOR_BASE_URL and NOOR_API_KEY. "
+            "Configure them in the Settings tab → Noor CMS.",
+        )
+
+    audit = GetSiteAudit(cms).execute()
+    return {
+        "keywords": {
+            "total": audit.keywords.total,
+            "active": audit.keywords.active,
+            "urls_configured": list(audit.keywords.urls_configured),
+            "urls_missing_meta": list(audit.keywords.urls_missing_meta),
+        },
+        "textos": {
+            "total": audit.textos.total,
+            "active": audit.textos.active,
+            "urls_configured": list(audit.textos.urls_configured),
+        },
+        "images": {
+            "total": audit.images.total,
+            "portfolio_images": audit.images.portfolio_images,
+            "portfolio_missing_alt": audit.images.portfolio_missing_alt,
+            "contenido_multimedia": audit.images.contenido_multimedia,
+        },
+        "blog": {
+            "total_posts": audit.blog.total_posts,
+            "posts_without_cover": audit.blog.posts_without_cover,
+            "posts_without_meta": audit.blog.posts_without_meta,
+        },
+        "portfolio": {
+            "published": audit.portfolio.published,
+        },
+    }
+
+
+@app.get("/cms/pages")
+def cms_list_pages() -> dict:
+    """Return all SEO-managed pages for the Noor site."""
+    from ...application.cms import ListSeoPages
+    from ...infrastructure.llm.factory import make_cms
+
+    settings = get_settings()
+    cms = make_cms(settings)
+    if cms is None:
+        raise HTTPException(
+            503,
+            "Noor CMS integration requires NOOR_BASE_URL and NOOR_API_KEY. "
+            "Configure them in the Settings tab → Noor CMS.",
+        )
+
+    pages = ListSeoPages(cms).execute()
+    return {
+        "pages": [
+            {
+                "url": p.url,
+                "h1": p.h1,
+                "h2": p.h2,
+                "hero_title": p.hero_title,
+                "meta_title": p.meta_title,
+                "meta_description": p.meta_description,
+            }
+            for p in pages
+        ]
+    }
+
+
+class _SeoPageIn(BaseModel):
+    url: str
+    h1: str
+    h2: str | None = None
+    hero_title: str | None = None
+    meta_title: str | None = None
+    meta_description: str | None = None
+
+
+@app.put("/cms/pages")
+def cms_update_page(body: _SeoPageIn) -> dict:
+    """Create or fully-replace a page's SEO metadata in the Noor site.
+
+    Requires url (url_path) and h1 (keyword_h1). All other fields are optional
+    but MUST be included if they were previously set — Noor performs a full
+    replace, so omitting an optional field will clear it in the DB.
+    The use-case validates h1 (>=3 non-whitespace chars, no angle brackets, <=60)
+    and returns a clear error rather than a raw 422.
+    """
+    from ...application.cms import UpdateSeoPage
+    from ...domain.models import SeoPage
+    from ...infrastructure.llm.factory import make_cms
+
+    settings = get_settings()
+    cms = make_cms(settings)
+    if cms is None:
+        raise HTTPException(
+            503,
+            "Noor CMS integration requires NOOR_BASE_URL and NOOR_API_KEY. "
+            "Configure them in the Settings tab → Noor CMS.",
+        )
+
+    page = SeoPage(
+        url=body.url,
+        h1=body.h1,
+        h2=body.h2,
+        hero_title=body.hero_title,
+        meta_title=body.meta_title,
+        meta_description=body.meta_description,
+    )
+    try:
+        result = UpdateSeoPage(cms).execute(page)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+
+    return result
+
+
+@app.post("/settings/verify-cms")
+def verify_cms_key() -> dict:
+    """Probe the Noor CMS API key without performing a write.
+
+    Returns {"ok": bool, "detail": str}. Mirrors /settings/verify-llm so the
+    Settings tab can use the same connection-test button pattern.
+    """
+    from ...infrastructure.llm.factory import verify_cms
+
+    return verify_cms(get_settings())
+
+
 class _CompetitorIn(BaseModel):
     domain: str
     location: str = ""

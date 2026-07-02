@@ -11,6 +11,8 @@ from .models import (
     Keyword,
     RankingSignal,
     ScoredKeyword,
+    SeoAudit,
+    SeoPage,
 )
 
 
@@ -85,3 +87,36 @@ class CompetitorProvider(Protocol):
         max_competitors: int,
         max_keywords_per_competitor: int,
     ) -> list[CompetitorDomain]: ...
+
+
+class CMSPort(Protocol):
+    """Manage the SEO metadata of an external site via its REST API.
+
+    Noor is the first adapter; WordPress (future) will implement the same port.
+    The port is intentionally minimal — only the three operations the use-cases need.
+
+    IMPORTANT: update_page performs a FULL REPLACE on the remote end, not a patch.
+    Callers must always supply every field, even those not being edited.
+    """
+
+    def get_audit(self) -> SeoAudit:
+        """Return the site-wide SEO health summary."""
+        ...
+
+    def list_pages(self) -> list[SeoPage]:
+        """Return all pages managed by the CMS SEO layer."""
+        ...
+
+    def update_page(self, page: SeoPage) -> dict:
+        """Create or fully-replace one page's SEO metadata.
+
+        Returns the adapter's confirmation dict, e.g. {"action": "updated", "url_path": "/…"}.
+        Raises on validation errors or auth failures.
+        """
+        ...
+
+    def verify(self) -> bool:
+        """Cheap connectivity + auth probe.  Returns True only when the remote is
+        reachable and the API key is accepted (e.g. a light GET /api/seo/audit check).
+        """
+        ...
