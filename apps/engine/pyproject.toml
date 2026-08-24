@@ -2,7 +2,7 @@
 name = "aceleraseo-engine"
 version = "0.0.1"
 description = "AceleraSEO — autonomous SEO strategy engine (Sense/Decide/Act/Learn)"
-readme = "../../README.md"
+readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
 dependencies = [
