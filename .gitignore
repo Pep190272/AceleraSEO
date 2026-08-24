@@ -75,3 +75,7 @@ Thumbs.db
 
 # Personal / strategy docs (Premod job) — not part of the project
 Premod/
+
+# Local agent config (never commit)
+.claude/
+.gga
