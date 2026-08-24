@@ -49,3 +49,13 @@ pythonpath = ["src"]
 markers = [
     "render: live browser tests (Playwright + network) — opt in with `-m render`",
 ]
+# The `render` marker labelled those tests but nothing acted on it: a marker only
+# tags a test, it does not deselect it. `pytest -q` therefore collected the live
+# browser test and CI died on `ModuleNotFoundError: No module named 'playwright'`,
+# even though the module is deliberately absent from `dev` and the test's own
+# docstring promises "the default suite stays fast and offline".
+#
+# Deselecting here rather than in the workflow keeps the promise true locally too,
+# and in one place. Opting in still works: a `-m` on the command line overrides
+# this one, so `pytest -m render` runs exactly the live tests.
+addopts = "-m 'not render'"
