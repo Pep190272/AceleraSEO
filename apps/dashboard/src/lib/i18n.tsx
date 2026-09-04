@@ -2,7 +2,7 @@
 
 // Lightweight i18n: a translations dict + a provider + a useT() hook.
 // Default language is Spanish; the header toggle persists the choice.
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 
 export type Lang = "es" | "en";
 
@@ -396,8 +396,10 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
 type Dict = Record<string, string>;
 
 function flatten(namespaced: NamespacedDict): Dict {
+  // Object.assign mutates the accumulator in one pass; spreading would copy every
+  // key already merged on each bucket, making this O(n²) in the number of keys.
   return Object.values(namespaced).reduce<Dict>((acc, bucket) => {
-    return { ...acc, ...bucket };
+    return Object.assign(acc, bucket);
   }, {});
 }
 
@@ -433,7 +435,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>("es");
 
   useEffect(() => {
-    const saved = (typeof window !== "undefined" && localStorage.getItem("lang")) as Lang | null;
+    // Narrow with a real check rather than asserting over `false | string | null`.
+    const saved = typeof window === "undefined" ? null : localStorage.getItem("lang");
     if (saved === "es" || saved === "en") setLangState(saved);
   }, []);
 
@@ -450,24 +453,36 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     }
   }, [lang]);
 
-  function setLang(l: Lang) {
+  // setLang closes over nothing that changes, so it is stable for the provider's
+  // whole lifetime.
+  const setLang = useCallback((l: Lang) => {
     setLangState(l);
     if (typeof window !== "undefined") localStorage.setItem("lang", l);
-  }
+  }, []);
 
-  const t = (k: TranslationKey | (string & {})): string => {
-    const key = k as string;
-    const value = STRINGS[lang][key] ?? STRINGS.en[key];
-    if (value !== undefined) return value;
-    // Warn in development so missing keys surface during authoring.
-    // Guarded so the check is tree-shaken out of production bundles.
-    if (process.env.NODE_ENV !== "production") {
-      console.warn(`[i18n] Missing translation key: "${key}" (lang: ${lang})`);
-    }
-    return key;
-  };
+  // t reads STRINGS, a module-level constant, so `lang` is its only dependency:
+  // one stable identity per language rather than a new one per render.
+  const t = useCallback(
+    (k: TranslationKey | (string & {})): string => {
+      const key = k as string;
+      const value = STRINGS[lang][key] ?? STRINGS.en[key];
+      if (value !== undefined) return value;
+      // Warn in development so missing keys surface during authoring.
+      // Guarded so the check is tree-shaken out of production bundles.
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(`[i18n] Missing translation key: "${key}" (lang: ${lang})`);
+      }
+      return key;
+    },
+    [lang],
+  );
 
-  return <LangCtx.Provider value={{ lang, setLang, t }}>{children}</LangCtx.Provider>;
+  // Memoized: an object literal here would be a new value on every render, so every
+  // consumer would re-render and every effect keyed on `t` would re-run — including
+  // data fetches in tabs that have nothing to do with the language.
+  const value = useMemo(() => ({ lang, setLang, t }), [lang, setLang, t]);
+
+  return <LangCtx.Provider value={value}>{children}</LangCtx.Provider>;
 }
 
 export function useT() {
