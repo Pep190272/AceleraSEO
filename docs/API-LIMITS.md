@@ -62,3 +62,50 @@ Every constraint here was verified against primary/authoritative sources in May 
 | Auto-index any page in Google | API forbidden for general pages | IndexNow (Bing/etc) + monitor Google |
 | "Test before indexing" | Wrong order; index then measure | Publish → index → measure → iterate |
 | Guaranteed fast #1 | Rankings compound | Pick winnable battles → fast *impact* |
+
+## What costs money, and what breaks without it
+
+Added 2026-09-04. Recorded because the project was once believed to be blocked by
+subscription cost — see [ADR-0003](./adr/0003-pause-and-resume.md). It is not.
+
+**Free — everything the core loop needs:**
+
+| Provider | Adapter | Used by |
+|---|---|---|
+| Search Console (Search Analytics) | `infrastructure/google/gsc_adapter.py` | SENSE, LEARN |
+| GA4 Data API | `infrastructure/google/ga4_adapter.py` | SENSE |
+| URL Inspection API | `infrastructure/google/url_inspection_adapter.py` | ACT (2k/day) |
+| Google OAuth | `infrastructure/google/oauth.py` | access to the three above |
+| IndexNow (Bing, Yandex, Naver, Seznam, Yep) | `infrastructure/providers/indexnow.py` | ACT — open protocol |
+| Built-in crawler (httpx + selectolax) | `infrastructure/providers/crawler.py` | AUDIT — your own CPU |
+| Rendering crawler (Playwright) | `infrastructure/providers/rendering_crawler.py` | AUDIT, optional extra |
+
+**Paid — exactly two:**
+
+| Provider | Adapter | Buys |
+|---|---|---|
+| DataForSEO | `infrastructure/providers/dataforseo.py` | keyword volume/difficulty, competitor data |
+| Anthropic | `infrastructure/llm/anthropic_adapter.py`, `llm/discoverer.py` | keyword discovery, strategy narrative |
+
+**With zero spend, 18 of the 20 engine endpoints work.** `make_llm()` falls back to
+`NullLLM` when no real key is configured (`infrastructure/llm/factory.py:26`), which is
+deliberate — `null_llm.py:3-4`: *"The brain must work without a paid LLM… the real LLM
+only upgrades the prose."*
+
+Exactly two endpoints degrade, both with a clear message rather than an error:
+
+| Endpoint | Without payment | Where |
+|---|---|---|
+| `POST /strategy/discover` | `422` — needs an LLM key | `interfaces/api/app.py:174-179` |
+| `POST /competitors/analyze` | `503` — needs DataForSEO credentials | `interfaces/api/app.py:398-402` |
+
+### The hidden cost
+
+Not a subscription — manual work. Without DataForSEO, `POST /strategy/preview` still
+scores and ranks keywords, but you must supply `search_volume` and `difficulty` yourself:
+they are caller-provided fields defaulting to zero
+(`interfaces/api/app.py:139-143`). Scoring is `intent × volume ÷ difficulty`, so zeros in
+mean useless rankings out. Paying replaces typing, it does not unlock the engine.
+
+> **`SERPAPI_KEY` is declared in `infrastructure/config.py:51` but no adapter exists.**
+> There is no `providers/serpapi.py`. Setting it does nothing today.

@@ -1,7 +1,18 @@
 # Session handoff — AceleraSEO
 
-Snapshot of where the project stands, so the next session starts with full context.
-Last updated: 2026-05-31.
+> ⚠️ **Historical document. Do not read the status table below as current.**
+> Written 2026-05-31. Its "M0–M6 ALL DONE" table counts a milestone as done when the code
+> exists, which turned out to hide that SENSE, ACT and LEARN have no UI and are reachable
+> only with `curl`.
+>
+> **Current status → [ROADMAP.md](./ROADMAP.md)** (the single source of truth).
+> **What happens next → [PLAN.md](./PLAN.md).**
+> **Why this was corrected → [ADR-0003](./adr/0003-pause-and-resume.md).**
+>
+> Kept because the sections below — verified API limits, the two run modes, how the
+> Strategy tab works, and the environment gotchas — are still accurate and useful.
+
+Snapshot of where the project stood on 2026-05-31.
 
 ## What AceleraSEO is
 
@@ -29,7 +40,10 @@ Hexagonal (ports & adapters). Two apps in a monorepo:
   engine only through server-side proxy routes (`src/app/api/*`) so `ENGINE_URL` stays
   private. **Spanish-default UI with ES/EN toggle.**
 
-## Milestones — ALL DONE (M0–M6) + extras
+## Milestones as claimed on 2026-05-31 — SUPERSEDED
+
+> ❌ **Out of date. This table means "the code was written", not "a user can reach it".**
+> Three of these rows are engine-only. Current status: [ROADMAP.md](./ROADMAP.md).
 
 | Milestone | What | Status |
 |-----------|------|--------|

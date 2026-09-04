@@ -3,7 +3,7 @@
 > The open-source **autonomous SEO strategist**. Not another data dashboard — a decision engine that senses your real rankings, decides the winnable strategy for *your* business, acts, and learns from the results.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Status: Design](https://img.shields.io/badge/status-design-blue.svg)](./docs/ARCHITECTURE.md)
+[![Status: Active development](https://img.shields.io/badge/status-active%20development-green.svg)](./docs/ROADMAP.md)
 
 ---
 
@@ -31,17 +31,26 @@ We did the research so you don't chase impossible promises:
 
 ## What it actually does
 
-| Layer | Capability | Data source |
-|-------|-----------|-------------|
-| **SENSE** | Real ranking, clicks, impressions, position, CTR (16 months) | Google Search Console API |
-| **SENSE** | Traffic, conversions, revenue per landing page | GA4 Data API |
-| **SENSE** | Technical audit (Core Web Vitals, schema, crawl) | Built-in local crawler |
-| **SENSE** | Market: volumes, difficulty, SERP, competitors | DataForSEO / SerpApi (your key) |
-| **DECIDE** | Business classification + winnable-keyword strategy | LLM reasoning over the above |
-| **ACT** | Instant indexing on Bing/Yandex/Naver/Seznam/Yep | IndexNow protocol |
-| **ACT** | Index-status monitoring + alerts for Google | URL Inspection API (read) + sitemap |
-| **ACT** | On-page / content recommendations (human-approved) | Strategy engine |
-| **LEARN** | Measure real outcome, adjust strategy, loop | GSC + GA4 feedback |
+**Reach** says how you use it today: **UI** = a tab in the dashboard; **API** = implemented,
+tested and exposed over HTTP, but with no screen yet. Giving the API-only rows a UI is
+slices 1–5 of [docs/PLAN.md](./docs/PLAN.md).
+
+| Layer | Capability | Data source | Reach |
+|-------|-----------|-------------|-------|
+| **SENSE** | Real ranking, clicks, impressions, position, CTR (16 months) | Google Search Console API | API |
+| **SENSE** | Traffic, conversions, revenue per landing page | GA4 Data API | API |
+| **SENSE** | Technical audit (schema presence, meta, headings, canonicals, broken links, thin content) | Built-in local crawler | **UI** |
+| **SENSE** | Market: volumes, difficulty, competitors | DataForSEO (your key) | **UI** |
+| **DECIDE** | Business classification + winnable-keyword strategy | LLM reasoning over the above | **UI** |
+| **ACT** | Instant indexing on Bing/Yandex/Naver/Seznam/Yep | IndexNow protocol | API |
+| **ACT** | Index status per URL, on demand | URL Inspection API (read) | API |
+| **ACT** | On-page / content recommendations (human-approved) | Strategy engine | API |
+| **LEARN** | Measure real outcome, adjust strategy, loop | GSC + GA4 feedback | API |
+
+Not implemented, despite what earlier versions of this table said: **Core Web Vitals** are
+not measured, index-status **monitoring and alerting** does not exist (the check is a
+single on-demand call, with no scheduler), and **SerpApi** has a config field but no
+adapter. Tracked in [docs/PLAN.md](./docs/PLAN.md).
 
 ## The strategy brain
 
@@ -66,16 +75,40 @@ Hexagonal (ports & adapters). See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
 - `apps/dashboard` — Next.js UI
 - `docs/` — architecture, ADRs, API limits research
 
-## Quick start (design phase)
+## Quick start
+
+Requires Docker. **No API keys needed to try it** — the strategy brain falls back to a
+keyless mode and still produces a full plan.
 
 ```bash
-cp .env.example .env   # fill in your keys
-# engine + dashboard setup — see docs/ARCHITECTURE.md
+git clone https://github.com/Pep190272/AceleraSEO.git
+cd AceleraSEO
+cp .env.example .env          # leave it empty to run keyless
+docker compose up             # engine → http://localhost:8000  (API docs at /docs)
 ```
+
+To get the dashboard as well:
+
+```bash
+docker compose -f docker-compose.demo.yml up --build
+# dashboard → http://localhost:3000    engine → http://localhost:8000
+```
+
+Open http://localhost:3000, go to **Strategy**, paste a few keywords, and you get a
+prioritised plan. Add your own API keys later from the **Settings** tab — no file editing.
+Stop it with `docker compose down` (or `docker compose -f docker-compose.demo.yml down`).
+
+What each optional key buys you, and what still works without it:
+[docs/API-LIMITS.md](./docs/API-LIMITS.md).
 
 ## Status
 
-🚧 **Design phase.** in active development - engine + dashboard running.
+**In active development.** The engine implements the full Sense → Decide → Act → Learn
+loop; the dashboard currently exposes Decide and the technical audit, and the other three
+stages are reachable over the API while their screens are built.
+
+- Honest, per-milestone status: [docs/ROADMAP.md](./docs/ROADMAP.md)
+- What gets built next, and in what order: [docs/PLAN.md](./docs/PLAN.md)
 
 ## License
 
