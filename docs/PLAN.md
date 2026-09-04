@@ -226,6 +226,12 @@ Lettered, not numbered, on purpose: this is **remediation, not progress**. Slice
 what turns a library into a product. Do this one when the debt is in the way, or first if
 you would rather start from a clean base — the two are independent.
 
+> **Status:** the live half is done — the context value is memoised on branch
+> `fix/i18n-stable-context`, hook passed without `--no-verify`. **The request race is still
+> open**, because it lives in the consumer, not the provider; see below. The `SiteTool`
+> typing half is still gated on slice 6, and the type debt the hook surfaced while landing
+> this became slice T.
+
 **How this was found.** Adding two comment lines to `SiteTool.tsx` and `i18n.tsx` was
 rejected by the pre-commit hook (Gentleman Guardian Angel). **The hook reviews the whole
 file, not the diff.** So any edit to a file, however small, pulls in every pre-existing
@@ -278,6 +284,55 @@ Decide reading 3 versus readings 1 and 2 first (§1).
 
 Write `providers/serpapi.py` behind the existing market port, or remove the setting. A
 second adapter is the cheapest possible demonstration that the hexagonal claim is real.
+
+### Slice T — Make `TranslationKey` mean something (estimate unknown, see below)
+
+Surfaced by the pre-commit hook while landing the slice-S context fix, and split out
+rather than folded into it. This is **not newly discovered debt**: `i18n.tsx` line 417
+already says *"tightening is a later slice"*. Somebody deferred it deliberately. This
+gives that deferral a budget.
+
+**The finding.** `export type TranslationKey = keyof typeof STRINGS.es` (`i18n.tsx:420`)
+buys nothing. `STRINGS` is annotated `Record<Lang, Dict>` where `Dict =
+Record<string, string>`, so the annotation widens the object *before* `keyof` runs and the
+141 literal keys are gone. Verified with a throwaway probe compiled against the real
+tsconfig, not assumed:
+
+```ts
+const bogus: TranslationKey = "this.key.does.not.exist";  // compiles clean
+```
+
+So the comment at `i18n.tsx:412-418`, which promises *"IDEs autocomplete known keys"*,
+describes behaviour the code cannot deliver. No autocomplete, no typo detection. A
+mistyped key falls through to the runtime `console.warn` instead of failing the build.
+
+**Correcting the source that reported it.** The hook also claimed `TranslationKey`
+resolves to `string | number` and that `t(0)` compiles clean. Both are wrong. It resolves
+to plain `string`, and `t(0)` fails with `TS2345: Argument of type 'number' is not
+assignable to parameter of type 'string | (string & {})'`. There is no numeric type hole.
+**The debt is real but smaller than first reported** — recorded here so the next reader
+inherits the verified version rather than the tool's version. (The hook agreed with this
+on its second pass.)
+
+**The fix.** The key union has to come from the literal objects, not from the
+`Dict`-annotated container: either drop the annotation on the flattened dict and use
+`satisfies` at the boundary, or derive the union from `NAMESPACED` with `as const`. The
+edit itself is small.
+
+**The risk is the call sites, and it is genuinely unestimated.** Today `t()` accepts any
+string. Tightening the type will fail the build at every call passing a key that does not
+exist — which is the point, and also the unknown: it could be zero call sites or forty.
+Nobody has looked. Budget a spike to count them before committing to the slice.
+
+Also worth folding in while the file is open: the default context value at `i18n.tsx:432`
+returns `t: (k) => k as string`, so a component rendered outside `LanguageProvider`
+silently paints raw keys like `nav.strategy` instead of failing. Either warn from the
+default `t` under `NODE_ENV !== "production"`, or throw from `useT()` when the context is
+still the default sentinel.
+
+**Separately, and cheap:** `apps/dashboard` has **no ESLint config at all** — `npx next
+lint` drops into an interactive setup wizard. The engine has Ruff in CI; the dashboard has
+nothing. Worth closing on its own, and it is what left this class of defect invisible.
 
 ---
 
