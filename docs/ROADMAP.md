@@ -2,7 +2,37 @@
 
 Phased so each milestone is independently useful and self-hostable.
 
-## M0 — Scaffold & design ✅ (current)
+> **This file is the single source of truth for project status.** Other documents describe
+> plans or history and must not restate status. Delivery plan: [PLAN.md](./PLAN.md).
+> Why the status was rewritten: [ADR-0003](./adr/0003-pause-and-resume.md).
+
+## Status — as of 2026-09-04
+
+A milestone counts as **done** only when a user can reach it **through the UI**. Code that
+exists but is callable only with `curl` is *engine-only*, not done. That test is what a
+public repo is judged by, and by it the picture is:
+
+| Milestone | Engine | Reachable in the UI | Status |
+|---|---|---|---|
+| M0 Scaffold & design | ✅ | n/a | **done** |
+| M1 SENSE | ✅ | ❌ no OAuth button, no run control | **engine-only** |
+| M2 Crawler / audit | ✅ | ✅ Audit tab | **done** (minus Core Web Vitals, never implemented) |
+| M2.5 JS-rendering crawl | ✅ | ✅ via `?render=true` | **done** |
+| M3 DECIDE | ✅ | ✅ Strategy + Competitors tabs | **done** |
+| M4 ACT | ✅ | ❌ no IndexNow control, no approval queue | **engine-only** |
+| M5 LEARN | ✅ | ❌ no screen | **engine-only** |
+| M6 Docker self-host | ✅ | ⚠️ works, but the README does not say how | **partial** |
+
+Also shipped outside the milestone list: the Next.js dashboard, UI-configured settings
+with a demo-mode guard, niche keyword discovery, Spanish/English i18n, LLM key
+verification, competitor-by-domain analysis, and a Noor CMS adapter (built, **not wired
+into the UI**).
+
+Closing the three *engine-only* rows is slices 1–5 of [PLAN.md](./PLAN.md).
+
+---
+
+## M0 — Scaffold & design ✅
 - Repo, license, docs, architecture, verified API-limits research.
 - `.env.example`, hexagonal skeleton.
 
