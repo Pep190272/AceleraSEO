@@ -50,18 +50,21 @@ For a public repo whose job is to make an impression:
 > **A stranger who has never seen this project goes from landing on the GitHub page to a
 > working instance in their browser in under 10 minutes, without asking anyone anything.**
 
-Ten minutes, on a machine with Docker installed. What that requires:
+Ten minutes, on a machine with Docker installed. What that requires — **before** is the
+state that prompted this plan, **now** is after the documentation commits that ship with it:
 
-| Requirement | Today |
-|---|---|
-| README says exactly how to start it | ❌ Quick start points at `ARCHITECTURE.md`, which has no runnable instruction — only a tooling table row at `ARCHITECTURE.md:99` |
-| It starts with one command | ✅ `docker compose up` works |
-| It does something visible with no keys at all | ⚠️ Partly — Strategy and Audit work keyless; the rest looks broken |
-| The status claim matches reality | ❌ `SESSION-HANDOFF.md` says M0–M6 done, `ROADMAP.md:5` marks only M0 |
-| Advertised features are reachable | ❌ SENSE, ACT and LEARN are `curl`-only |
-| Nothing advertised is missing | ❌ Core Web Vitals and index-status alerts are claimed and not implemented |
+| Requirement | Before | Now |
+|---|---|---|
+| README says exactly how to start it | ❌ Quick start pointed at `ARCHITECTURE.md`, which carries no runnable instruction | ✅ working commands, both stacks |
+| It starts with one command | ✅ | ✅ |
+| It does something visible with no keys at all | ⚠️ Strategy and Audit work keyless; the rest looks broken | ⚠️ unchanged — needs slices 1–4 |
+| The status claim matches reality | ❌ two documents disagreed | ✅ roadmap is the single source of truth |
+| Advertised features are reachable | ❌ SENSE, ACT and LEARN are `curl`-only | ❌ unchanged — this is the real work |
+| Nothing advertised is missing | ❌ Core Web Vitals and index-status alerts claimed, not built | ✅ claims removed; building them is later |
 
-Five of six fail. That gap, not the feature count, is the actual state of the project.
+Five of six failed; three are closed by writing, and **two remain because they need code**.
+That is the honest state: the cheap half of the impression problem is fixed, and what is
+left is slices 1–4.
 
 ---
 
@@ -106,14 +109,16 @@ serves it back for display. Slice 3 needs this.
   It is the only path in the system that writes to a live site.
 - **The `site.*` i18n block** — `apps/dashboard/src/lib/i18n.tsx:137` (ES) and `:316` (EN),
   plus the `nav.site` labels at `:37` and `:216`. Copy for a tab that does not exist.
-- **`serpapi_key`** — declared at `infrastructure/config.py:52` with **no adapter written**.
+- **`serpapi_key`** — declared at `infrastructure/config.py:51` with **no adapter written**.
   There is no `providers/serpapi.py`. The setting is a promise the code does not keep.
   Either write the adapter (it would be the second market-data adapter, which is what
   `ARCHITECTURE.md` claims the hexagonal shape buys) or remove the field.
-- **Claimed and not implemented** — Core Web Vitals in the audit table (`README.md:38`);
-  no LCP/CLS/INP anywhere in `domain/audit.py` or `providers/crawler.py`. Index-status
-  *"monitoring + alerts"* (`README.md:42`); `/act/index-status` is a single synchronous
-  one-URL check with no scheduler and no alert channel.
+- **Claimed and not implemented** — the README's capability table used to advertise Core
+  Web Vitals; there is no LCP/CLS/INP anywhere in `domain/audit.py` or
+  `providers/crawler.py`. It also advertised index-status *"monitoring + alerts"*;
+  `/act/index-status` is a single synchronous one-URL check with no scheduler and no alert
+  channel. Both claims were removed from the README in the commit that introduced this
+  file — the features still do not exist.
 
 ### Ports worth adding, in order of value
 
@@ -127,20 +132,23 @@ serves it back for display. Slice 3 needs this.
 
 ## 4. Gap inventory, by impression
 
-Ordered by what a stranger notices, not by difficulty.
+Ordered by what a stranger notices, not by difficulty. Status is as of the commit that
+introduced this file; line references point at the **current** files, so the fixed rows
+name the gap rather than a line that no longer exists.
 
-| # | Gap | Impression it leaves | Where |
+| # | Gap | Impression it leaves | Status |
 |---|---|---|---|
-| 1 | Cannot start it from the README | "They didn't bother." First and worst. | `README.md:68-72`, `ARCHITECTURE.md:99` |
-| 2 | Status contradicts itself | "Which do I believe?" Costs credibility on a public repo. | `ROADMAP.md:5` vs `SESSION-HANDOFF.md:33-49` |
-| 3 | Hero copy says "Try it below" for four verbs; only one is below | Overstatement, discovered within a minute. | `i18n.tsx:225-226`, `:46` |
-| 4 | SENSE / ACT / LEARN unreachable | The demo cannot show what the README promises. | §3 above |
-| 5 | Features claimed, not implemented | Reads as padding. | `README.md:38`, `:42` |
-| 6 | Dead component with full copy shipped | Sloppiness, visible to anyone reading the source — which is the point of a showcase. | `SiteTool.tsx`, `i18n.tsx:137,316` |
-| 7 | Setting with no adapter | Same. | `config.py:52` |
+| 1 | Quick start pointed at `ARCHITECTURE.md`, which has no runnable instruction — only a tooling table row at `ARCHITECTURE.md:99` | "They didn't bother." First and worst. | **fixed** — README now has working commands |
+| 2 | `ROADMAP.md` marked only M0 while `SESSION-HANDOFF.md` declared M0–M6 done | "Which do I believe?" Costs credibility on a public repo. | **fixed** — roadmap is the single source of truth |
+| 3 | Hero copy says "Try it below" for four verbs; only one is below | Overstatement, discovered within a minute. | **open** — `i18n.tsx:225-226` (EN), `:46` (ES) |
+| 4 | SENSE / ACT / LEARN unreachable | The demo cannot show what the README promises. | **open** — slices 1–5; see §3 |
+| 5 | Core Web Vitals, index-status alerting and SerpApi claimed but absent | Reads as padding. | **fixed in the docs** — the claims are gone; building them is slice 7 and beyond |
+| 6 | Dead component with full copy shipped | Sloppiness, visible to anyone reading the source — which is the point of a showcase. | **open** — `SiteTool.tsx`, `i18n.tsx:137` (ES) and `:316` (EN) |
+| 7 | Setting with no adapter | Same. | **open** — `config.py:51` |
 
-Gaps 1, 2, 3 and 5 are **documentation and copy**, fixable in about three hours total, and
-they are four of the top five. The expensive one is gap 4.
+Gaps 1, 2 and 5 were **documentation and copy**, and closing them took about three hours —
+three of the top five, for the price of writing. Gap 3 is another hour of copy. The
+expensive one is gap 4, and it is the only one that needs code.
 
 ---
 
@@ -226,11 +234,11 @@ is not a one-line review.
 
 Two findings, and they are **not** the same kind of problem:
 
-**1. Live defect — `i18n.tsx:474`, unstable context value.** This is not dead code. Every
+**1. Live defect — `i18n.tsx:470`, unstable context value.** This is not dead code. Every
 tab in the dashboard consumes `i18n`. The provider returns a fresh object literal on every
 render, so `t` is a new reference each time. Anything that lists `t` as a dependency
 refires. In `SiteTool` that means toggling the language — or the `localStorage` restore at
-`i18n.tsx:440` when the saved language is `en` — refetches both `/api/cms/audit` and
+`i18n.tsx:436` when the saved language is `en` — refetches both `/api/cms/audit` and
 `/api/cms/pages`. There is no cancellation, so two in-flight requests can land out of
 order and the **older response wins**: stale data that looks fresh, in a panel whose job is
 to show the current state of a live site. The same instability affects every other consumer
@@ -246,8 +254,8 @@ unreachable, so **fixing it may be wasted work** — resolve slice 6 first. If t
 being deleted, this evaporates.
 
 Also flagged, non-blocking: an assertion over a `false | string | null` expression at
-`i18n.tsx:440`, an O(n²) `reduce`-with-spread at `i18n.tsx:403`, and a `setTimeout` without
-cleanup at `SiteTool.tsx:262`.
+`i18n.tsx:436`, an O(n²) `reduce`-with-spread at `i18n.tsx:399`, and a `setTimeout` without
+cleanup at `SiteTool.tsx:248`.
 
 **Acceptance condition — write this into the commit, not just the plan: the hook must pass
 without `--no-verify`.** The point of this slice is to clear the debt, and bypassing the
@@ -280,7 +288,7 @@ second adapter is the cheapest possible demonstration that the hexagonal claim i
 - Gaps 1, 2, 3, 5 fixed: README starts it, one honest status, copy that matches the code.
 - Slices 0–4: the loop visible end to end in the browser.
 - Slice 6: no dead code shipped.
-- The **live half of slice S** — the `i18n.tsx:474` context fix. It is a production defect
+- The **live half of slice S** — the `i18n.tsx:470` context fix. It is a production defect
   in a provider every tab consumes, and it is cheap. The `SiteTool` typing half follows
   slice 6 and only if the tab survives.
 

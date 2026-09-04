@@ -72,8 +72,9 @@ Under that test, three things previously filed as cosmetic become product defect
   points at `docs/ARCHITECTURE.md`, which names Docker Compose in a tooling table
   (`ARCHITECTURE.md:99`) but carries no runnable instruction. That is not a documentation
   gap; it is the lost first impression, which is the whole reason the repo is public.
-- `SESSION-HANDOFF.md` declares M0–M6 all done while `ROADMAP.md:5` marks only M0. In a
+- `SESSION-HANDOFF.md` declared M0–M6 all done while `ROADMAP.md` marked only M0. In a
   private repo that is untidy. In a public one it reads as either careless or overstated.
+  Reconciled in the same change as this ADR: the roadmap is now the single source of truth.
 - SENSE, ACT and LEARN exist only behind `curl`. A visitor cannot see the loop the README
   promises actually run.
 

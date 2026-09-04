@@ -107,5 +107,5 @@ they are caller-provided fields defaulting to zero
 (`interfaces/api/app.py:139-143`). Scoring is `intent × volume ÷ difficulty`, so zeros in
 mean useless rankings out. Paying replaces typing, it does not unlock the engine.
 
-> **`SERPAPI_KEY` is declared in `infrastructure/config.py:52` but no adapter exists.**
+> **`SERPAPI_KEY` is declared in `infrastructure/config.py:51` but no adapter exists.**
 > There is no `providers/serpapi.py`. Setting it does nothing today.
