@@ -212,6 +212,52 @@ over `/act/indexnow`.
 - **Verify:** a proposal can be approved and rejected from the browser.
 - **Free.** IndexNow is an open protocol (Bing, Yandex, Naver, Seznam, Yep).
 
+### Slice S — Clean up the i18n / SiteTool debt (~1.5–2 h)
+
+Lettered, not numbered, on purpose: this is **remediation, not progress**. Slice 1 is still
+what turns a library into a product. Do this one when the debt is in the way, or first if
+you would rather start from a clean base — the two are independent.
+
+**How this was found.** Adding two comment lines to `SiteTool.tsx` and `i18n.tsx` was
+rejected by the pre-commit hook (Gentleman Guardian Angel). **The hook reviews the whole
+file, not the diff.** So any edit to a file, however small, pulls in every pre-existing
+defect that file carries. Worth knowing before you touch either of these: a one-line change
+is not a one-line review.
+
+Two findings, and they are **not** the same kind of problem:
+
+**1. Live defect — `i18n.tsx:474`, unstable context value.** This is not dead code. Every
+tab in the dashboard consumes `i18n`. The provider returns a fresh object literal on every
+render, so `t` is a new reference each time. Anything that lists `t` as a dependency
+refires. In `SiteTool` that means toggling the language — or the `localStorage` restore at
+`i18n.tsx:440` when the saved language is `en` — refetches both `/api/cms/audit` and
+`/api/cms/pages`. There is no cancellation, so two in-flight requests can land out of
+order and the **older response wins**: stale data that looks fresh, in a panel whose job is
+to show the current state of a live site. The same instability affects every other consumer
+of `t`; `SiteTool` is just where it produces a visible bug today.
+
+Fix: memoize the context value and keep `t` stable. Do this **regardless** of what happens
+to `SiteTool` — it is a production defect in a shared provider.
+
+**2. Dead-code debt — `SiteTool.tsx`, nullable fields not declared.** `set()` writes `null`
+into fields typed as non-nullable. It does not crash today only because every read site
+defends itself (`form.h1 ?? ""` and similar). That is luck, not types. But the component is
+unreachable, so **fixing it may be wasted work** — resolve slice 6 first. If the tab is
+being deleted, this evaporates.
+
+Also flagged, non-blocking: an assertion over a `false | string | null` expression at
+`i18n.tsx:440`, an O(n²) `reduce`-with-spread at `i18n.tsx:403`, and a `setTimeout` without
+cleanup at `SiteTool.tsx:262`.
+
+**Acceptance condition — write this into the commit, not just the plan: the hook must pass
+without `--no-verify`.** The point of this slice is to clear the debt, and bypassing the
+gate that found it would leave the repo in exactly the state that made the debt invisible.
+If the hook still refuses, the work is not finished.
+
+- **Verify:** `git commit` succeeds with the hook enabled; `npx tsc --noEmit` stays clean;
+  toggling the language does not refire the CMS requests.
+- **Free.**
+
 ### Slice 6 — Resolve the dead code (~1 h)
 
 Wire `SiteTool.tsx` into `tab-config.ts`, or delete it and its `site.*` i18n block.
@@ -234,6 +280,9 @@ second adapter is the cheapest possible demonstration that the hexagonal claim i
 - Gaps 1, 2, 3, 5 fixed: README starts it, one honest status, copy that matches the code.
 - Slices 0–4: the loop visible end to end in the browser.
 - Slice 6: no dead code shipped.
+- The **live half of slice S** — the `i18n.tsx:474` context fix. It is a production defect
+  in a provider every tab consumes, and it is cheap. The `SiteTool` typing half follows
+  slice 6 and only if the tab survives.
 
 **Out, deliberately** — say so rather than leaving it ambiguous:
 
