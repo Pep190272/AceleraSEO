@@ -183,7 +183,7 @@ quarters of the system from a library into something visible.
 
 - **Touch:** `SettingsTool.tsx` (a "Connect Google" button), a proxy route under
   `src/app/api/auth/`, a connection-state indicator.
-- **Engine:** already done — `/auth/google/login` and `/auth/google/callback` exist.
+- **Engine:** only half done — `/auth/google/login` and `/auth/google/callback` existed, but the callback returned JSON instead of redirecting to the dashboard, there was no status endpoint or `state` check, and the dropped PKCE verifier made every token exchange fail (fixed in PR #15).
 - **Verify:** click, complete consent, land back in Settings showing "connected".
 - **Free.**
 
