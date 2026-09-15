@@ -6,6 +6,9 @@ from urllib.parse import urlencode
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import RedirectResponse
+from google.api_core.exceptions import GoogleAPICallError
+from google.auth.exceptions import GoogleAuthError
+from googleapiclient.errors import HttpError
 from pydantic import BaseModel
 
 from ...application.crawl import CrawlSite
@@ -76,6 +79,11 @@ def verify_llm_key() -> dict:
 _DEMO_GOOGLE_MESSAGE = (
     "This is a shared demo — connecting a Google account is disabled, because the "
     "token would be shared with every visitor. Self-host to connect your own account."
+)
+
+_DEMO_SENSE_MESSAGE = (
+    "This is a shared demo — running a collection is disabled, because it would "
+    "write into a shared database. Self-host to connect your own account and run it here."
 )
 
 
@@ -150,13 +158,41 @@ def google_callback(
 
 
 @app.post("/sense/run", dependencies=_WRITE)
-def sense_run(days: int = 90) -> dict:
+def sense_run(days: int = Query(90, ge=1, le=480)) -> dict:
+    """Run a SENSE collection cycle against Search Console (+ GA4 if configured).
+
+    Failure modes are mapped to a message the caller can show as-is, never a
+    raw 500: no connection (401), a broken/corrupt saved token (401, same
+    remedy — reconnect), a missing site URL (400), and Google itself
+    rejecting or rate-limiting the request once collection is under way
+    (400/401/429/502)."""
     settings = get_settings()
-    creds = oauth.load_credentials(settings)
+    try:
+        creds = oauth.load_credentials(settings)
+    except (OSError, ValueError) as exc:
+        # Corrupt or unreadable token file — same remedy as never having
+        # connected, so this is a 401 rather than a raw 500. Mirrors
+        # oauth.is_connected()'s handling of the same failure.
+        logger.warning("Google token file is unreadable or corrupt (%s).", type(exc).__name__)
+        raise HTTPException(
+            401,
+            "Google connection is broken (the saved token could not be read). "
+            "Reconnect from Settings.",
+        ) from exc
+    except GoogleAuthError as exc:
+        logger.warning("Google token refresh failed (%s).", type(exc).__name__)
+        raise HTTPException(
+            401,
+            "Google connection expired or was revoked. Reconnect from Settings.",
+        ) from exc
     if creds is None:
         raise HTTPException(401, "Not authorized. Visit /auth/google/login first.")
     if not settings.gsc_site_url:
-        raise HTTPException(400, "GSC_SITE_URL not set in .env.")
+        raise HTTPException(
+            400,
+            "GSC_SITE_URL is not set. Add the Search Console site URL in the "
+            "Settings tab → Google.",
+        )
 
     session_factory = make_session_factory(settings.database_url)
     use_case = CollectSignals(
@@ -164,15 +200,52 @@ def sense_run(days: int = 90) -> dict:
         analytics=GA4AnalyticsProvider(creds),
         repository=RankingRepository(session_factory),
     )
-    result = use_case.execute(
-        site_url=settings.gsc_site_url,
-        property_id=settings.ga4_property_id,
-        days=days,
-    )
+    try:
+        result = use_case.execute(
+            site_url=settings.gsc_site_url,
+            property_id=settings.ga4_property_id,
+            days=days,
+        )
+    except (HttpError, GoogleAPICallError) as exc:
+        # Search Console (HttpError, googleapiclient) or GA4 (GoogleAPICallError,
+        # the gRPC client) rejected or throttled the call once collection was
+        # already under way — bad scope, revoked access, quota. Never let this
+        # surface as a raw 500; map it to a readable, actionable status.
+        if isinstance(exc, HttpError):
+            status = exc.resp.status if exc.resp is not None else 502
+        else:
+            # exc.code is an HTTPStatus enum member (compares equal to its int
+            # value, but int() keeps the log line readable as a plain number).
+            status = int(exc.code) if exc.code is not None else 502
+        logger.warning("Google API call failed during SENSE collection (%s).", status)
+        if status in (401, 403):
+            raise HTTPException(
+                401,
+                "Google rejected the request — the connected account may not have "
+                "access to this Search Console/GA4 property. Reconnect from Settings.",
+            ) from exc
+        if status in (400, 404):
+            # Google does not recognise the site or property — a configuration
+            # problem the user can fix, not an outage.
+            raise HTTPException(
+                400,
+                "Google did not accept the Search Console site URL or GA4 property ID. "
+                "Check both in the Settings tab → Google.",
+            ) from exc
+        if status == 429:
+            raise HTTPException(
+                429, "Google's API rate limit was hit. Wait a moment and try again.",
+            ) from exc
+        raise HTTPException(
+            502, "Google's API is unavailable right now. Try again shortly.",
+        ) from exc
     return {
         "rankings_fetched": result.rankings_fetched,
         "rankings_new": result.rankings_new,
         "pages_with_conversions": result.pages_with_conversions,
+        # False means conversions were skipped, not that there were zero —
+        # CollectSignals.execute() only calls GA4 when a property id is set.
+        "ga4_configured": bool(settings.ga4_property_id),
     }
 
 
