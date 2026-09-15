@@ -16,6 +16,7 @@
   - #24 issue forms
   - #30 neutral Spanish (tú) instead of voseo
   - #31 placeholders read as "not configured", and SENSE errors name the failing ID
+  - #32 free Brave competitor adapter
 - **Google is connected** on the local instance, and SENSE has collected 4,811 positions for the configured Search Console property.
 - **The engine requires `ENGINE_API_TOKEN`.** Without it, write and paid endpoints answer 503 and startup logs how to set it. The dashboard must send the same value (`X-Engine-Token`, server-side). The local `.env` has one.
 - **The engine is published on `127.0.0.1:8000` only.**
@@ -35,7 +36,7 @@ Research on 2026-09-15 found no free, Terms-of-Service-clean source of **real Go
 - Google Custom Search JSON API is closed to new customers and shuts down 2027-01-01;
 - Bing Web Search API was retired 2025-08-11.
 
-Brave Search API (https://brave.com/search/api/) gives $5 in free credits a month (about 1,000 queries) and forbids storing results. A free opt-in adapter is in progress: it takes your top Search Console queries and runs them through Brave Search. Its positions come from Brave's index, not Google's. It needs a Brave key pasted in Settings.
+Brave Search API (https://brave.com/search/api/) gives $5 in free credits a month (about 1,000 queries) and forbids storing results. #32 adds a free opt-in adapter: it takes your top 10 Search Console queries and runs each one through Brave Search, which is 10 calls per analysis (about 100 analyses a month). It turns on when a real Brave key is saved in Settings and Google is connected. Its positions come from Brave's index, not Google's; traffic and volume are reported as unavailable. Results are held in memory only. `.env.example` does not list `BRAVE_API_KEY` yet.
 
 ### Open items
 
