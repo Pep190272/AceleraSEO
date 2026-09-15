@@ -154,6 +154,34 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "set.noor.verify.ok": "✓ Conexión con Noor OK",
       "set.noor.verify.fail": "✗ No se pudo conectar con Noor",
       "set.noor.verify.hint": "Comprueba que la URL base y la clave API de Noor son correctas.",
+      "set.google.title": "Conexión con Google",
+      "set.google.checking": "Comprobando la conexión con Google…",
+      "set.google.unknown":
+        "No se pudo comprobar la conexión con Google: el motor no responde.",
+      "set.google.connected": "● Conectado — el motor puede leer Search Console y Analytics",
+      "set.google.notconnected": "○ Sin conectar",
+      "set.google.notconfigured": "Sin configurar — faltan el ID y el secreto del cliente OAuth",
+      "set.google.notconfigured.hint":
+        "Pegá el ID y el secreto del cliente OAuth en la sección Google de abajo, guardá, y vas a poder conectar tu cuenta.",
+      "set.google.connect": "Conectar Google",
+      "set.google.reconnect": "Volver a conectar Google",
+      "set.google.opening": "Abriendo Google…",
+      "set.google.hint":
+        "Abre la pantalla de permisos de Google. Solo lectura de Search Console y Analytics; al terminar volvés a esta pestaña.",
+      "set.google.savefirst": "Guardá tus cambios antes de conectar.",
+      "set.google.demo": "Conectar una cuenta de Google está desactivado en la demo compartida.",
+      "set.google.done":
+        "✓ Google conectado. El motor ya puede leer tus datos de Search Console y Analytics.",
+      "set.google.err.denied": "✗ Cancelaste la conexión con Google — no se cambió nada.",
+      "set.google.err.state":
+        "✗ El enlace de inicio de sesión venció o ya se usó. Probá conectar de nuevo.",
+      "set.google.err.exchange":
+        "✗ Google no aceptó el inicio de sesión. Revisá el ID y el secreto del cliente OAuth y la URI de redirección, y probá de nuevo.",
+      "set.google.err.not_configured":
+        "✗ Google OAuth todavía no está configurado — agregá primero el ID y el secreto del cliente.",
+      "set.google.err.demo": "✗ Conectar Google está desactivado en la demo compartida.",
+      "set.google.err.unreachable": "✗ No se pudo contactar al motor para iniciar la conexión.",
+      "set.google.err.failed": "✗ La conexión con Google falló. Probá de nuevo.",
     },
     // Spanish settings field labels and hints, keyed by the engine's field key and
     // group. The engine's English text is the source; English shows it unchanged.
@@ -331,6 +359,33 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "set.noor.verify.ok": "✓ Connected to Noor",
       "set.noor.verify.fail": "✗ Could not connect to Noor",
       "set.noor.verify.hint": "Checks that the Noor base URL and API key are correct.",
+      "set.google.title": "Google connection",
+      "set.google.checking": "Checking the Google connection…",
+      "set.google.unknown": "Could not check the Google connection: the engine is not responding.",
+      "set.google.connected": "● Connected — the engine can read Search Console and Analytics",
+      "set.google.notconnected": "○ Not connected",
+      "set.google.notconfigured": "Not configured — needs the OAuth client ID and secret",
+      "set.google.notconfigured.hint":
+        "Paste the OAuth client ID and secret in the Google section below, save, and you can connect your account.",
+      "set.google.connect": "Connect Google",
+      "set.google.reconnect": "Reconnect Google",
+      "set.google.opening": "Opening Google…",
+      "set.google.hint":
+        "Opens Google's consent screen. Read-only access to Search Console and Analytics; you come back to this tab when done.",
+      "set.google.savefirst": "Save your changes before connecting.",
+      "set.google.demo": "Connecting a Google account is disabled in the shared demo.",
+      "set.google.done":
+        "✓ Google connected. The engine can now read your Search Console and Analytics data.",
+      "set.google.err.denied": "✗ You cancelled the Google connection — nothing was changed.",
+      "set.google.err.state":
+        "✗ The sign-in link expired or was already used. Try connecting again.",
+      "set.google.err.exchange":
+        "✗ Google did not accept the sign-in. Check the OAuth client ID, secret and redirect URI, then try again.",
+      "set.google.err.not_configured":
+        "✗ Google OAuth is not configured yet — add the client ID and secret first.",
+      "set.google.err.demo": "✗ Connecting Google is disabled in the shared demo.",
+      "set.google.err.unreachable": "✗ Could not reach the engine to start the connection.",
+      "set.google.err.failed": "✗ The Google connection failed. Try again.",
     },
     // Empty on purpose: English shows the engine's own field text (see SettingsTool).
     setFields: {},

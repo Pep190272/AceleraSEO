@@ -17,6 +17,18 @@ type Field = {
 
 type SettingsResponse = { demo_mode: boolean; fields: Field[] };
 
+type GoogleStatus = { configured: boolean; connected: boolean };
+
+// Reasons the engine / login route attach to `?google=error&reason=…`.
+const GOOGLE_ERROR_KEYS: Record<string, string> = {
+  denied: "set.google.err.denied",
+  state: "set.google.err.state",
+  exchange: "set.google.err.exchange",
+  not_configured: "set.google.err.not_configured",
+  demo: "set.google.err.demo",
+  unreachable: "set.google.err.unreachable",
+};
+
 export default function SettingsTool() {
   const { lang, t } = useT();
   const [demo, setDemo] = useState(false);
@@ -30,6 +42,28 @@ export default function SettingsTool() {
   );
   const [verifyingCms, setVerifyingCms] = useState(false);
   const [verifyCms, setVerifyCms] = useState<{ ok: boolean; detail?: string } | null>(null);
+  // undefined = still checking, null = could not be checked.
+  const [google, setGoogle] = useState<GoogleStatus | null | undefined>(undefined);
+  const [googleNotice, setGoogleNotice] = useState<{ ok: boolean; key: string } | null>(null);
+  const [connecting, setConnecting] = useState(false);
+
+  async function loadGoogleStatus() {
+    try {
+      const res = await fetch("/api/auth/google/status");
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const data = await res.json();
+      setGoogle({ configured: Boolean(data?.configured), connected: Boolean(data?.connected) });
+    } catch {
+      setGoogle(null);
+    }
+  }
+
+  function connectGoogle() {
+    setConnecting(true);
+    // A full navigation, not a fetch: the route redirects the browser to Google's
+    // consent screen, and Google sends it back to this tab when done.
+    window.location.assign("/api/auth/google/login");
+  }
 
   async function load() {
     setLoading(true);
@@ -47,7 +81,33 @@ export default function SettingsTool() {
 
   useEffect(() => {
     load();
+    loadGoogleStatus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Outcome of a Google consent round-trip (`?google=connected|error&reason=…`).
+  // Shown once, then removed from the URL so a reload does not repeat it.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const outcome = params.get("google");
+    if (outcome === null) return;
+    if (outcome === "connected") {
+      setGoogleNotice({ ok: true, key: "set.google.done" });
+    } else {
+      const reason = params.get("reason") ?? "";
+      setGoogleNotice({ ok: false, key: GOOGLE_ERROR_KEYS[reason] ?? "set.google.err.failed" });
+    }
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
+
+  // Coming back with the browser's Back button restores this page from the
+  // back/forward cache with the button still in its "opening" state; re-arm it.
+  useEffect(() => {
+    function onPageShow(e: PageTransitionEvent) {
+      if (e.persisted) setConnecting(false);
+    }
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
   }, []);
 
   async function save() {
@@ -64,6 +124,7 @@ export default function SettingsTool() {
       setFields(data.fields ?? fields);
       setStatus(t("set.saved"));
       setVerify(null); // saved key changed → previous verdict is stale
+      loadGoogleStatus(); // the OAuth client id/secret may have just been set
     } catch (e) {
       setStatus(e instanceof Error ? e.message : "Save failed");
     }
@@ -117,6 +178,79 @@ export default function SettingsTool() {
           {t("set.demo")}
         </div>
       )}
+
+      <div style={{ marginBottom: "1.5rem" }}>
+        <h3
+          style={{
+            fontSize: "0.9rem",
+            color: "var(--muted)",
+            marginBottom: "0.75rem",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+          }}
+        >
+          {t("set.google.title")}
+        </h3>
+        {google === undefined && <p className="hint">{t("set.google.checking")}</p>}
+        {google === null && (
+          <p style={{ fontWeight: 600, color: "var(--warn)" }}>{t("set.google.unknown")}</p>
+        )}
+        {google && (
+          <>
+            <p
+              style={{
+                fontWeight: 600,
+                color: google.connected
+                  ? "var(--accent)"
+                  : google.configured
+                    ? "var(--text)"
+                    : "var(--warn)",
+              }}
+            >
+              {google.connected
+                ? t("set.google.connected")
+                : google.configured
+                  ? t("set.google.notconnected")
+                  : t("set.google.notconfigured")}
+            </p>
+            {demo ? (
+              <p className="hint">{t("set.google.demo")}</p>
+            ) : google.configured ? (
+              <>
+                <div style={{ marginTop: "0.5rem" }}>
+                  <button
+                    className={google.connected ? undefined : "primary"}
+                    onClick={connectGoogle}
+                    disabled={connecting || dirty}
+                  >
+                    {connecting
+                      ? t("set.google.opening")
+                      : google.connected
+                        ? t("set.google.reconnect")
+                        : t("set.google.connect")}
+                  </button>
+                </div>
+                <p className="hint" style={{ marginTop: "0.5rem" }}>
+                  {dirty ? t("set.google.savefirst") : t("set.google.hint")}
+                </p>
+              </>
+            ) : (
+              <p className="hint">{t("set.google.notconfigured.hint")}</p>
+            )}
+          </>
+        )}
+        {googleNotice && (
+          <p
+            style={{
+              marginTop: "0.75rem",
+              fontWeight: 600,
+              color: googleNotice.ok ? "var(--accent)" : "var(--warn)",
+            }}
+          >
+            {t(googleNotice.key)}
+          </p>
+        )}
+      </div>
 
       {groups.map((group) => (
         <div key={group} style={{ marginBottom: "1.5rem" }}>

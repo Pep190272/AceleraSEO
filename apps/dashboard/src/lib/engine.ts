@@ -34,13 +34,16 @@ export async function engineFetch(path: string, init?: RequestInit) {
     } catch {
       body = { error: text || "Non-JSON response from engine" };
     }
-    return { ok: res.ok, status: res.status, body };
+    // Headers are exposed for callers that pass `redirect: "manual"` and need the
+    // engine's Location (the Google consent redirect).
+    return { ok: res.ok, status: res.status, headers: res.headers, body };
   } catch {
     // Network errors (ECONNREFUSED, DNS failure, timeout/abort) must not
     // surface as unhandled 500s. Return a stable 503 shape instead.
     return {
       ok: false,
       status: 503,
+      headers: new Headers(),
       body: { error: "Engine unreachable" },
     } as const;
   } finally {
