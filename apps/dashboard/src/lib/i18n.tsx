@@ -182,7 +182,7 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "set.google.err.demo": "✗ Conectar Google está desactivado en la demo compartida.",
       "set.google.err.unreachable": "✗ No se pudo contactar al motor para iniciar la conexión.",
       "set.google.err.failed": "✗ La conexión con Google falló. Probá de nuevo.",
-      "set.sense.title": "Recolección (SENSE)",
+      "set.sense.title": "Recolección de datos",
       "set.sense.needs_google":
         "Configurá el ID y el secreto del cliente OAuth de Google arriba para poder recolectar datos.",
       "set.sense.needs_connection": "Conectá tu cuenta de Google arriba antes de recolectar datos.",
@@ -403,7 +403,7 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "set.google.err.demo": "✗ Connecting Google is disabled in the shared demo.",
       "set.google.err.unreachable": "✗ Could not reach the engine to start the connection.",
       "set.google.err.failed": "✗ The Google connection failed. Try again.",
-      "set.sense.title": "Collection (SENSE)",
+      "set.sense.title": "Data collection",
       "set.sense.needs_google": "Configure the Google OAuth client ID and secret above to collect data.",
       "set.sense.needs_connection": "Connect your Google account above before collecting data.",
       "set.sense.needs_site_url":
