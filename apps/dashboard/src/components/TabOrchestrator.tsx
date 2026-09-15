@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import EngineStatus from "@/components/EngineStatus";
 import LangToggle from "@/components/LangToggle";
@@ -11,6 +11,14 @@ import { TAB_CONFIG, type Tab } from "@/lib/tab-config";
 export default function TabOrchestrator() {
   const { t } = useT();
   const [activeTab, setActiveTab] = useState<Tab>("strategy");
+
+  // Deep link: `?tab=<id>` opens that tab. Returning from Google consent lands on
+  // `?tab=settings`. Read after mount so the server render stays deterministic.
+  useEffect(() => {
+    const requested = new URLSearchParams(window.location.search).get("tab");
+    const match = TAB_CONFIG.find((entry) => entry.id === requested);
+    if (match) setActiveTab(match.id);
+  }, []);
 
   // One ref per tab button so we can move focus on keyboard navigation.
   const tabRefs = useRef<Array<HTMLButtonElement | null>>(
