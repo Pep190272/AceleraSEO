@@ -29,9 +29,9 @@ logger = logging.getLogger(__name__)
 
 MISSING_TOKEN_MESSAGE = (
     "ENGINE_API_TOKEN is not set, so this endpoint is disabled. Generate one with "
-    "`python -c \"import secrets; print(secrets.token_hex(32))\"`, put it in .env as "
-    "ENGINE_API_TOKEN=..., give the dashboard the same value, and restart. "
-    "See the README quick start."
+    "`python -c \"import secrets; print(secrets.token_hex(32))\"` and set it as the "
+    "ENGINE_API_TOKEN environment variable for the engine and the dashboard, then "
+    "restart (docker compose loads it from .env). See the README quick start."
 )
 
 _DEMO_WRITE_MESSAGE = (
