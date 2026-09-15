@@ -178,7 +178,7 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "set.google.err.exchange":
         "✗ Google no aceptó el inicio de sesión. Revisa el ID y el secreto del cliente OAuth y la URI de redirección, y prueba de nuevo.",
       "set.google.err.not_configured":
-        "✗ Google OAuth todavía no está configurado — agregá primero el ID y el secreto del cliente.",
+        "✗ Google OAuth todavía no está configurado — agrega primero el ID y el secreto del cliente.",
       "set.google.err.demo": "✗ Conectar Google está desactivado en la demo compartida.",
       "set.google.err.unreachable": "✗ No se pudo contactar al motor para iniciar la conexión.",
       "set.google.err.failed": "✗ La conexión con Google falló. Prueba de nuevo.",
