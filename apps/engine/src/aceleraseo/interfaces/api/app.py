@@ -15,6 +15,7 @@ from ...infrastructure.google.gsc_adapter import GSCRankingProvider
 from ...infrastructure.persistence.db import make_session_factory
 from ...infrastructure.persistence.repository import RankingRepository
 from ...infrastructure.providers.crawler import HttpxCrawler
+from ...infrastructure.providers.url_safety import UnsafeURLError, ensure_public_url
 from .guards import require_token, require_write_access, warn_if_token_missing
 
 app = FastAPI(title="AceleraSEO — Engine", version="0.1.0")
@@ -116,7 +117,21 @@ def audit_run(start_url: str, max_pages: int = 200, max_depth: int = 5,
 
     render=True drives a headless browser (Playwright) for JS-rendered / SPA
     sites where the raw HTML has no links. Requires the `render` extra.
+
+    The start URL must resolve to public addresses only. The httpx crawler
+    re-checks every request, redirects included. The rendering crawler aborts
+    private browser requests and discards pages reached through a private redirect,
+    but the redirected request still happens and WebSockets are not checked, so
+    rendering is off in the demo.
     """
+    from ...infrastructure.config import is_demo_mode
+
+    if render and is_demo_mode():
+        raise HTTPException(403, "JS rendering is disabled in the shared demo.")
+    try:
+        ensure_public_url(start_url)
+    except UnsafeURLError as exc:
+        raise HTTPException(400, str(exc)) from exc
     if render:
         from ...infrastructure.providers.rendering_crawler import RenderingCrawler
         crawler = RenderingCrawler()

@@ -11,8 +11,15 @@ Playwright is an optional dependency:
 """
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+from urllib.parse import urlsplit
+
 from ...domain.models import CrawledPage
 from .crawler import parse_html
+from .url_safety import UnsafeURLError, ensure_public_url
+
+if TYPE_CHECKING:
+    from playwright.sync_api import Request, Response, Route
 
 _DEFAULT_UA = "AceleraSEO-Crawler/0.1 (+https://github.com/Pep190272/AceleraSEO)"
 
@@ -28,13 +35,17 @@ class RenderingCrawler:
         self._wait_until = wait_until
         self._pw = sync_playwright().start()
         self._browser = self._pw.chromium.launch(headless=True)
-        self._context = self._browser.new_context(user_agent=_DEFAULT_UA)
+        # Service workers can serve requests that never reach context.route().
+        self._context = self._browser.new_context(user_agent=_DEFAULT_UA, service_workers="block")
+        self._context.route("**/*", block_private_requests)
 
     def fetch(self, url: str) -> CrawledPage:
         page = self._context.new_page()
         try:
             resp = page.goto(url, timeout=self._timeout_ms, wait_until=self._wait_until)
             status = resp.status if resp else 0
+            if resp and not redirect_chain_is_public(resp):
+                return CrawledPage(url=url, status_code=0)  # redirected to a private host
             html = page.content()
         except Exception:
             return CrawledPage(url=url, status_code=0)  # unreachable / render failure
@@ -46,3 +57,36 @@ class RenderingCrawler:
         self._context.close()
         self._browser.close()
         self._pw.stop()
+
+
+def block_private_requests(route: Route) -> None:
+    """Abort any browser request (page, subresource, fetch) to a non-public host.
+
+    Playwright does not call route handlers for redirect hops; fetch() checks the
+    redirect chain afterwards and discards the page (redirect_chain_is_public).
+    WebSocket connections do not pass through here and are not checked.
+    """
+    url = route.request.url
+    if urlsplit(url).scheme in ("http", "https"):
+        try:
+            ensure_public_url(url)
+        except UnsafeURLError:
+            route.abort()
+            return
+    route.continue_()
+
+
+def redirect_chain_is_public(resp: Response) -> bool:
+    """True when every hop that led to this response was a public http(s) URL.
+
+    The browser has already made the redirected request by the time this runs, so
+    it stops the private response from reaching the audit, not the request itself.
+    """
+    request: Request | None = resp.request
+    while request is not None:
+        try:
+            ensure_public_url(request.url)
+        except UnsafeURLError:
+            return False
+        request = request.redirected_from
+    return True

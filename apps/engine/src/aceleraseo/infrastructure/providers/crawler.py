@@ -5,12 +5,16 @@ Parsing lives here (I/O detail); the audit rules stay pure in the domain.
 """
 from __future__ import annotations
 
+import logging
 from urllib.parse import urljoin, urlparse
 
 import httpx
 from selectolax.parser import HTMLParser
 
 from ...domain.models import CrawledPage
+from .url_safety import UnsafeURLError, ensure_public_url
+
+logger = logging.getLogger(__name__)
 
 _DEFAULT_HEADERS = {"User-Agent": "AceleraSEO-Crawler/0.1 (+https://github.com/Pep190272/AceleraSEO)"}
 
@@ -21,11 +25,17 @@ class HttpxCrawler:
             timeout=timeout,
             follow_redirects=follow_redirects,
             headers=_DEFAULT_HEADERS,
+            # Runs for every request, redirects included, so a public page cannot
+            # bounce the crawler onto a private address.
+            event_hooks={"request": [lambda request: ensure_public_url(str(request.url))]},
         )
 
     def fetch(self, url: str) -> CrawledPage:
         try:
             resp = self._client.get(url)
+        except UnsafeURLError as exc:
+            logger.warning("Refused to crawl %s: %s", url, exc)
+            return CrawledPage(url=url, status_code=0)  # not allowed
         except httpx.RequestError:
             return CrawledPage(url=url, status_code=0)  # unreachable
 
