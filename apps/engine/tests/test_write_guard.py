@@ -77,8 +77,23 @@ def test_without_a_token_configured_local_calls_pass_the_guard(client, method, p
     assert _call(client, method, path, body).status_code == 500
 
 
+# POST routes that only compute or read: they change no engine state. Some spend a
+# configured provider's quota (LLM, DataForSEO) — see the PR, not guarded here.
+UNGUARDED_POSTS = {
+    "/settings/verify-llm",
+    "/settings/verify-cms",
+    "/audit/run",
+    "/strategy/discover",
+    "/strategy/preview",
+    "/competitors/analyze",
+}
+
+
 def test_every_state_changing_route_is_guarded():
-    """A new PUT/PATCH/DELETE route, or a listed write losing its guard, fails here."""
+    """A new write route that forgets the guard, or a listed write losing it, fails here.
+
+    Every POST must be either a guarded write or explicitly listed as unguarded,
+    so adding a POST forces a decision instead of silently shipping it open."""
     listed = {(method.upper(), path) for method, path, _ in WRITE_ENDPOINTS}
     for route in app_module.app.routes:
         dependant = getattr(route, "dependant", None)
@@ -87,5 +102,8 @@ def test_every_state_changing_route_is_guarded():
         guarded = any(d.call is app_module.require_write_access for d in dependant.dependencies)
         concrete_path = route.path.replace("{proposal_id}", "1").replace("{status}", "approved")
         for method in route.methods:
-            if method in {"PUT", "PATCH", "DELETE"} or (method, concrete_path) in listed:
+            must_guard = method in {"PUT", "PATCH", "DELETE"} or (method, concrete_path) in listed
+            if method == "POST" and route.path not in UNGUARDED_POSTS:
+                must_guard = True
+            if must_guard:
                 assert guarded, f"{method} {route.path} changes state but is not guarded"
