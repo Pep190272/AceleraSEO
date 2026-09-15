@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { hasTranslation, useT } from "@/lib/i18n";
+import SenseRunPanel from "@/components/SenseRunPanel";
+import type { GoogleStatus } from "@/lib/types/api";
 
 type Field = {
   key: string;
@@ -16,8 +18,6 @@ type Field = {
 };
 
 type SettingsResponse = { demo_mode: boolean; fields: Field[] };
-
-type GoogleStatus = { configured: boolean; connected: boolean };
 
 // Reasons the engine / login route attach to `?google=error&reason=…`.
 const GOOGLE_ERROR_KEYS: Record<string, string> = {
@@ -251,6 +251,12 @@ export default function SettingsTool() {
           </p>
         )}
       </div>
+
+      <SenseRunPanel
+        demo={demo}
+        google={google}
+        siteUrlSet={Boolean(fields.find((f) => f.key === "gsc_site_url")?.is_set)}
+      />
 
       {groups.map((group) => (
         <div key={group} style={{ marginBottom: "1.5rem" }}>

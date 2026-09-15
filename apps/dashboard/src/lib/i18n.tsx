@@ -182,6 +182,23 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "set.google.err.demo": "✗ Conectar Google está desactivado en la demo compartida.",
       "set.google.err.unreachable": "✗ No se pudo contactar al motor para iniciar la conexión.",
       "set.google.err.failed": "✗ La conexión con Google falló. Probá de nuevo.",
+      "set.sense.title": "Recolección (SENSE)",
+      "set.sense.needs_google":
+        "Configurá el ID y el secreto del cliente OAuth de Google arriba para poder recolectar datos.",
+      "set.sense.needs_connection": "Conectá tu cuenta de Google arriba antes de recolectar datos.",
+      "set.sense.needs_site_url":
+        "Falta la URL del sitio en Search Console. Configurala en la sección Google de abajo.",
+      "set.sense.run": "Ejecutar recolección",
+      "set.sense.running": "Recolectando… puede tardar un rato en sitios grandes.",
+      "set.sense.hint":
+        "Trae las últimas posiciones de Search Console (y las conversiones de Analytics, si está configurado) y las guarda.",
+      "set.sense.demo": "Ejecutar una recolección está desactivado en la demo compartida.",
+      "set.sense.done": "✓ Recolección terminada.",
+      "set.sense.rankings_fetched": "posiciones traídas",
+      "set.sense.rankings_new": "filas nuevas",
+      "set.sense.conversions": "páginas con conversiones",
+      "set.sense.no_ga4":
+        "No se recolectaron conversiones: falta el ID de propiedad de GA4 en Ajustes.",
     },
     // Spanish settings field labels and hints, keyed by the engine's field key and
     // group. The engine's English text is the source; English shows it unchanged.
@@ -386,6 +403,21 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "set.google.err.demo": "✗ Connecting Google is disabled in the shared demo.",
       "set.google.err.unreachable": "✗ Could not reach the engine to start the connection.",
       "set.google.err.failed": "✗ The Google connection failed. Try again.",
+      "set.sense.title": "Collection (SENSE)",
+      "set.sense.needs_google": "Configure the Google OAuth client ID and secret above to collect data.",
+      "set.sense.needs_connection": "Connect your Google account above before collecting data.",
+      "set.sense.needs_site_url":
+        "The Search Console site URL is missing. Set it in the Google section below.",
+      "set.sense.run": "Run collection",
+      "set.sense.running": "Collecting… this can take a while on large sites.",
+      "set.sense.hint":
+        "Pulls the latest rankings from Search Console (and conversions from Analytics, if configured) and saves them.",
+      "set.sense.demo": "Running a collection is disabled in the shared demo.",
+      "set.sense.done": "✓ Collection finished.",
+      "set.sense.rankings_fetched": "rankings fetched",
+      "set.sense.rankings_new": "new rows",
+      "set.sense.conversions": "pages with conversions",
+      "set.sense.no_ga4": "No conversions were collected: the GA4 property ID is missing in Settings.",
     },
     // Empty on purpose: English shows the engine's own field text (see SettingsTool).
     setFields: {},
