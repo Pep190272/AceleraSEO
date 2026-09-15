@@ -233,11 +233,20 @@ def sense_run(days: int = Query(90, ge=1, le=480)) -> dict:
             ) from exc
         if status in (400, 404):
             # Google does not recognise the site or property — a configuration
-            # problem the user can fix, not an outage.
+            # problem the user can fix, not an outage. HttpError comes from the
+            # Search Console client, GoogleAPICallError from the GA4 client, so
+            # the exception type tells us which configured value to name —
+            # the site URL is not a secret, so it is safe to echo back.
+            if isinstance(exc, HttpError):
+                raise HTTPException(
+                    400,
+                    "Google did not accept the Search Console site URL "
+                    f"({settings.gsc_site_url!r}). Check it in the Settings tab → Google.",
+                ) from exc
             raise HTTPException(
                 400,
-                "Google did not accept the Search Console site URL or GA4 property ID. "
-                "Check both in the Settings tab → Google.",
+                "Google did not accept the GA4 property ID "
+                f"({settings.ga4_property_id!r}). Check it in the Settings tab → Google.",
             ) from exc
         if status == 504:
             raise HTTPException(504, _GOOGLE_TIMEOUT_MESSAGE) from exc

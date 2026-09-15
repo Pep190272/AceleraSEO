@@ -11,7 +11,7 @@ from pathlib import Path
 import httplib2
 import pytest
 from fastapi.testclient import TestClient
-from google.api_core.exceptions import PermissionDenied, RetryError
+from google.api_core.exceptions import InvalidArgument, NotFound, PermissionDenied, RetryError
 from google.auth.exceptions import RefreshError, TransportError
 from google.oauth2.credentials import Credentials
 from googleapiclient.errors import HttpError
@@ -203,7 +203,12 @@ def test_sense_run_maps_google_api_failures_not_a_raw_500(
     _write_token(client.settings, expired=False)
     res = client.post("/sense/run")
     assert res.status_code == expected_status
-    assert "detail" in res.json()  # readable message, never a raw traceback
+    detail = res.json()["detail"]  # readable message, never a raw traceback
+    if google_status in (400, 404):
+        # HttpError comes from the Search Console client — name the site URL,
+        # not the GA4 property.
+        assert client.settings.gsc_site_url in detail
+        assert "GA4" not in detail
 
 
 def test_sense_run_maps_a_ga4_rejection_not_a_raw_500(client, tmp_path, monkeypatch, fake_providers):
@@ -221,6 +226,32 @@ def test_sense_run_maps_a_ga4_rejection_not_a_raw_500(client, tmp_path, monkeypa
     res = client.post("/sense/run")
     assert res.status_code == 401  # PermissionDenied.code == 403 -> mapped to 401
     assert "detail" in res.json()
+
+
+@pytest.mark.parametrize(
+    "ga4_exc_cls,expected_status",
+    [(InvalidArgument, 400), (NotFound, 400)],
+    ids=["ga4-invalid-argument-400", "ga4-not-found-404"],
+)
+def test_sense_run_ga4_rejection_names_the_property_id(
+    client, tmp_path, monkeypatch, fake_providers, ga4_exc_cls, expected_status
+):
+    class RaisingAnalyticsProvider:
+        def __init__(self, credentials):
+            pass
+
+        def fetch_conversions(self, property_id, days):
+            raise ga4_exc_cls("bad property")
+
+    settings = _settings(tmp_path, ga4_property_id="123456789")
+    monkeypatch.setattr(app_module, "get_settings", lambda: settings)
+    monkeypatch.setattr(app_module, "GA4AnalyticsProvider", RaisingAnalyticsProvider)
+    _write_token(settings, expired=False)
+    res = client.post("/sense/run")
+    assert res.status_code == expected_status
+    detail = res.json()["detail"]
+    assert settings.ga4_property_id in detail
+    assert "Search Console" not in detail
 
 
 # ── Google unreachable or too slow once collection is under way ──
