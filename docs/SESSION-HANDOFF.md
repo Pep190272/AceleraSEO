@@ -1,5 +1,61 @@
 # Session handoff — AceleraSEO
 
+## Session 2026-09-15 — latest
+
+**Read this section first.** Everything below it is the 2026-05-31 snapshot.
+
+### Where things stand (end of day)
+
+- **Merged today**, all merge commits after green CI:
+  - #9 `next` 15.5.24
+  - #19 dead SiteTool deleted
+  - #18 Spanish settings labels
+  - #20 write/token guards, loopback binding, `ENGINE_API_TOKEN` required (fail-closed)
+  - #21 audit SSRF protection
+  - #15/#16/#17 Connect Google, SENSE honest failures, SENSE panel
+  - #24 issue forms
+  - #30 neutral Spanish (tú) instead of voseo
+  - #31 placeholders read as "not configured", and SENSE errors name the failing ID
+  - #32 free Brave competitor adapter
+- **Google is connected** on the local instance, and SENSE has collected 4,811 positions for the configured Search Console property.
+- **The engine requires `ENGINE_API_TOKEN`.** Without it, write and paid endpoints answer 503 and startup logs how to set it. The dashboard must send the same value (`X-Engine-Token`, server-side). The local `.env` has one.
+- **The engine is published on `127.0.0.1:8000` only.**
+
+### Running locally
+
+- **Engine:** Docker `aceleraseo-engine` from `main` (`docker compose up -d --build`). The data volume holds the Google token, settings overrides and the ranking series; a rebuild keeps them, as verified on 2026-09-15.
+- **Dashboard:** `next start -H 127.0.0.1 -p 3000` from `apps/dashboard` on `main`, with `ENGINE_URL=http://localhost:8000` and `ENGINE_API_TOKEN` from `.env`.
+- **To stop:** kill the process listening on :3000, then run `docker compose down`.
+
+### Competitors without a paid API
+
+DataForSEO credentials in `.env` are placeholders, so `/competitors/analyze` answers 503 (shown in the tab).
+
+Research on 2026-09-15 found no free, Terms-of-Service-clean source of **real Google** rankings:
+- SerpApi and SearXNG scrape Google;
+- Google Custom Search JSON API is closed to new customers and shuts down 2027-01-01;
+- Bing Web Search API was retired 2025-08-11.
+
+Brave Search API (https://brave.com/search/api/) gives $5 in free credits a month (about 1,000 queries) and forbids storing results. #32 adds a free opt-in adapter: it takes your top 10 Search Console queries and runs each one through Brave Search, which is 10 calls per analysis (about 100 analyses a month). It turns on when a real Brave key is saved in Settings and Google is connected. Its positions come from Brave's index, not Google's; traffic and volume are reported as unavailable. Results are held in memory only. `.env.example` does not list `BRAVE_API_KEY` yet.
+
+### Open items
+
+- **#22** (`next` 15 → 16, major): needs its own session for breaking-change review, security delta and local build.
+- **#25–#28:** follow-up bugs from the review of the Google/SENSE stack.
+- **#29:** decision on whether `render=true` should also be refused on self-hosted engines.
+
+### Learned today
+
+- **The pre-commit AI review (`gga`) is nondeterministic, and it reviews whole files.**
+  - Capture its output on the first run: `git commit -F - > log 2>&1`.
+  - `git rebase --continue` does **not** run it. Use `gga run --pr-mode --diff-only` to review a rebased stack.
+- **"Non-empty" is not "real".** Measure the shape of a secret (length, suffix) without printing it.
+- **Stale `.next/types` from an older build makes `tsc` fail** on deleted routes. Build first, then typecheck.
+- **Tests that exercise `POST /settings` must patch `settings_store._OVERRIDES_PATH`.** It is read at import time, and otherwise the test writes a real `./data/settings-overrides.json`.
+- **Chrome automation on the dashboard is flaky.** Screenshots time out and the first clicks after load are lost. `get_page_text` after click + wait is more reliable; stop after three tries.
+
+---
+
 > ⚠️ **Historical document. Do not read the status table below as current.**
 > Written 2026-05-31. Its "M0–M6 ALL DONE" table counts a milestone as done when the code
 > exists, which turned out to hide that SENSE, ACT and LEARN have no UI and are reachable
