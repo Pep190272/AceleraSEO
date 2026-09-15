@@ -11,9 +11,17 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+from .credentials import is_real_value
+
 _OVERRIDES_PATH = os.environ.get(
     "SETTINGS_OVERRIDES_FILE", "./data/settings-overrides.json"
 )
+
+# Fields with their own "not set" sentinel that isn't a placeholder pattern:
+# autonomy_mode defaults to "none" (safe default, not a credential placeholder)
+# and max_auto_actions_per_day defaults to 0. These keep the original
+# truthy-and-not-sentinel check instead of the placeholder check below.
+_LEGACY_SENTINEL_FIELDS = {"autonomy_mode", "max_auto_actions_per_day"}
 
 
 @dataclass(frozen=True)
@@ -93,10 +101,25 @@ def save_overrides(values: dict) -> None:
 
 
 def describe(settings) -> list[dict]:
-    """Field metadata + current state. Secrets show 'set/not set', never values."""
+    """Field metadata + current state. Secrets show 'set/not set', never values.
+
+    is_set rule: for most fields (all secrets, plus non-secret fields such as
+    URLs/IDs that can carry a shipped .env.example placeholder) a field is
+    "set" only when its value is non-empty AND not a placeholder, using the
+    same `is_real_value` check the LLM factory uses to decide whether a key is
+    real. This keeps a template placeholder (e.g. a DataForSEO login that is
+    still "YOUR_DATAFORSEO_LOGIN") from showing as "configured" in the
+    Settings tab. The two fields with their own non-placeholder sentinel —
+    autonomy_mode ("none") and max_auto_actions_per_day (0) — keep the
+    original truthy-and-not-sentinel check instead.
+    """
     out: list[dict] = []
     for f in SCHEMA:
         value = getattr(settings, f.key, "")
+        if f.key in _LEGACY_SENTINEL_FIELDS:
+            is_set = bool(value) and str(value) not in ("0", "none")
+        else:
+            is_set = is_real_value(str(value))
         out.append({
             "key": f.key,
             "label": f.label,
@@ -104,7 +127,7 @@ def describe(settings) -> list[dict]:
             "secret": f.secret,
             "description": f.description,
             "placeholder": f.placeholder,
-            "is_set": bool(value) and str(value) not in ("0", "none"),
+            "is_set": is_set,
             # Non-secret values are echoed so the UI can show them; secrets are not.
             "value": "" if f.secret else str(value),
         })

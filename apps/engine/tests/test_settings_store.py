@@ -51,3 +51,59 @@ def test_describe_masks_secrets_but_shows_plain(store):
 
 def test_missing_file_loads_empty(store):
     assert store.load_overrides() == {}
+
+
+def test_placeholder_secret_is_not_set(store):
+    class FakeSettings:
+        dataforseo_login = "YOUR_DATAFORSEO_LOGIN"
+
+        def __getattr__(self, name):
+            return ""
+
+    rows = {r["key"]: r for r in store.describe(FakeSettings())}
+    assert rows["dataforseo_login"]["is_set"] is False
+
+
+def test_real_looking_secret_is_set(store):
+    class FakeSettings:
+        dataforseo_password = "fake-test-password-not-real"
+
+        def __getattr__(self, name):
+            return ""
+
+    rows = {r["key"]: r for r in store.describe(FakeSettings())}
+    assert rows["dataforseo_password"]["is_set"] is True
+
+
+def test_real_site_url_is_set(store):
+    class FakeSettings:
+        gsc_site_url = "sc-domain:example-real-site.com"
+
+        def __getattr__(self, name):
+            return ""
+
+    rows = {r["key"]: r for r in store.describe(FakeSettings())}
+    assert rows["gsc_site_url"]["is_set"] is True
+
+
+def test_autonomy_mode_none_is_not_set(store):
+    class FakeSettings:
+        autonomy_mode = "none"
+        max_auto_actions_per_day = 0
+
+        def __getattr__(self, name):
+            return ""
+
+    rows = {r["key"]: r for r in store.describe(FakeSettings())}
+    assert rows["autonomy_mode"]["is_set"] is False
+    assert rows["max_auto_actions_per_day"]["is_set"] is False
+
+
+def test_empty_value_is_not_set(store):
+    class FakeSettings:
+        def __getattr__(self, name):
+            return ""
+
+    rows = {r["key"]: r for r in store.describe(FakeSettings())}
+    assert rows["noor_api_key"]["is_set"] is False
+    assert rows["gsc_site_url"]["is_set"] is False
