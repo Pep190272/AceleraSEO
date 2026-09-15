@@ -43,14 +43,14 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
     hero: {
       "hero.title": "El experto, no otro panel de datos.",
       "hero.subtitle":
-        "SEO autónomo de código abierto. Detecta tu posicionamiento real, decide la estrategia ganable para tu negocio, actúa y aprende. Probalo abajo — sin registro, sin claves API.",
+        "SEO autónomo de código abierto. Detecta tu posicionamiento real, decide la estrategia ganable para tu negocio, actúa y aprende. Pruébalo abajo — sin registro, sin claves API.",
     },
     footer: {
       "footer.oss": "Código abierto (MIT) ·",
     },
     strat: {
       "strat.lead":
-        "Contale al motor cómo es tu sitio y descubrí qué palabras clave realmente vale la pena perseguir para tu situación.",
+        "Cuéntale al motor cómo es tu sitio y descubre qué palabras clave realmente vale la pena perseguir para tu situación.",
       "strat.mode.discover": "Descubrir palabras de mi nicho",
       "strat.mode.paste": "Ya tengo mis palabras",
       "strat.q1": "1 · ¿Qué tan consolidado está tu sitio?",
@@ -60,7 +60,7 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "strat.mat.established": "Consolidado — posiciona para muchos",
       "strat.local.yes": "Sí — atiende una ciudad/zona",
       "strat.local.no": "No — online / a nivel nacional",
-      "strat.describe.label": "3 · Describí tu negocio o nicho",
+      "strat.describe.label": "3 · Describe tu negocio o nicho",
       "strat.describe.ph":
         "Ej: Fontanería de urgencias en Barcelona, reparaciones de fugas y calderas, atención 24h en el barrio de Gràcia.",
       "strat.location.label": "Ubicación (opcional, mejora lo local)",
@@ -69,13 +69,13 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "strat.paste.hint": "una por línea: término, búsquedas mensuales, dificultad 0-100, intención",
       "strat.reset": "↺ Restablecer ejemplo",
       "strat.run.discover": "Descubrir mis palabras ganables →",
-      "strat.run.paste": "Mostrame qué vale la pena →",
+      "strat.run.paste": "Muéstrame qué vale la pena →",
       "strat.thinking": "Pensando…",
       "strat.needkey":
-        "El descubrimiento necesita una clave de IA. Esta demo compartida funciona sin claves — usá el modo «Ya tengo mis palabras», o instalá tu propia copia y agregá tu clave en Ajustes.",
+        "El descubrimiento necesita una clave de IA. Esta demo compartida funciona sin claves — usa el modo «Ya tengo mis palabras», o instala tu propia copia y agrega tu clave en Ajustes.",
     },
     res: {
-      "res.title": "Acá está tu plan",
+      "res.title": "Aquí está tu plan",
       "res.profile.a": "Tu sitio parece un negocio",
       "res.profile.b": "con autoridad",
       "res.profile.c":
@@ -86,10 +86,10 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "res.verdict.best": "★ Mejor apuesta",
       "res.verdict.good": "Vale la pena",
       "res.verdict.hard": "Difícil por ahora",
-      "res.verdict.skip": "Saltala por ahora",
+      "res.verdict.skip": "Sáltala por ahora",
       "res.verdict.hint":
         "El veredicto = qué tan ganable es una palabra para TU autoridad, balanceando volumen de búsqueda contra dificultad. Mayor puntaje = mejor apuesta.",
-      "res.actions.title": "Hacé esto, en orden",
+      "res.actions.title": "Haz esto, en orden",
       "res.actions.fixfirst": "arreglar primero",
     },
     audit: {
@@ -109,14 +109,14 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
     },
     comp: {
       "comp.lead":
-        "Ingresá un dominio y descubrí quiénes son sus principales competidores orgánicos y para qué palabras clave ranquean.",
+        "Ingresa un dominio y descubre quiénes son sus principales competidores orgánicos y para qué palabras clave ranquean.",
       "comp.domain.label": "Dominio a analizar",
       "comp.domain.ph": "ejemplo.com",
       "comp.location.label": "Ubicación (opcional)",
       "comp.location.ph": "España",
       "comp.run": "Analizar competidores →",
       "comp.analyzing": "Analizando…",
-      "comp.error.nodomain": "Ingresá un dominio para analizar.",
+      "comp.error.nodomain": "Ingresa un dominio para analizar.",
       "comp.res.title": "Competidores encontrados",
       "comp.res.empty": "No se encontraron competidores para este dominio.",
       "comp.res.hint":
@@ -136,12 +136,12 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
     set: {
       "set.loading": "Cargando ajustes…",
       "set.demo":
-        "🔒 Esta es una demo compartida — los ajustes son de solo lectura. Para usar tus propias claves, instalá tu copia en un comando (docker compose up) y configurá todo desde esta misma pestaña. Sin editar archivos.",
+        "🔒 Esta es una demo compartida — los ajustes son de solo lectura. Para usar tus propias claves, instala tu copia en un comando (docker compose up) y configura todo desde esta misma pestaña. Sin editar archivos.",
       "set.configured": "● configurado",
       "set.save": "Guardar ajustes",
       "set.saving": "Guardando…",
       "set.saved": "Guardado ✓",
-      "set.keep": "•••••••• (dejá vacío para mantener)",
+      "set.keep": "•••••••• (deja vacío para mantener)",
       "set.notset": "sin configurar",
       "set.verify": "Probar conexión con la IA",
       "set.verifying": "Comprobando la clave…",
@@ -162,32 +162,32 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "set.google.notconnected": "○ Sin conectar",
       "set.google.notconfigured": "Sin configurar — faltan el ID y el secreto del cliente OAuth",
       "set.google.notconfigured.hint":
-        "Pegá el ID y el secreto del cliente OAuth en la sección Google de abajo, guardá, y vas a poder conectar tu cuenta.",
+        "Pega el ID y el secreto del cliente OAuth en la sección Google de abajo, guarda, y podrás conectar tu cuenta.",
       "set.google.connect": "Conectar Google",
       "set.google.reconnect": "Volver a conectar Google",
       "set.google.opening": "Abriendo Google…",
       "set.google.hint":
-        "Abre la pantalla de permisos de Google. Solo lectura de Search Console y Analytics; al terminar volvés a esta pestaña.",
-      "set.google.savefirst": "Guardá tus cambios antes de conectar.",
+        "Abre la pantalla de permisos de Google. Solo lectura de Search Console y Analytics; al terminar vuelves a esta pestaña.",
+      "set.google.savefirst": "Guarda tus cambios antes de conectar.",
       "set.google.demo": "Conectar una cuenta de Google está desactivado en la demo compartida.",
       "set.google.done":
         "✓ Google conectado. El motor ya puede leer tus datos de Search Console y Analytics.",
       "set.google.err.denied": "✗ Cancelaste la conexión con Google — no se cambió nada.",
       "set.google.err.state":
-        "✗ El enlace de inicio de sesión venció o ya se usó. Probá conectar de nuevo.",
+        "✗ El enlace de inicio de sesión venció o ya se usó. Prueba conectar de nuevo.",
       "set.google.err.exchange":
-        "✗ Google no aceptó el inicio de sesión. Revisá el ID y el secreto del cliente OAuth y la URI de redirección, y probá de nuevo.",
+        "✗ Google no aceptó el inicio de sesión. Revisa el ID y el secreto del cliente OAuth y la URI de redirección, y prueba de nuevo.",
       "set.google.err.not_configured":
-        "✗ Google OAuth todavía no está configurado — agregá primero el ID y el secreto del cliente.",
+        "✗ Google OAuth todavía no está configurado — agrega primero el ID y el secreto del cliente.",
       "set.google.err.demo": "✗ Conectar Google está desactivado en la demo compartida.",
       "set.google.err.unreachable": "✗ No se pudo contactar al motor para iniciar la conexión.",
-      "set.google.err.failed": "✗ La conexión con Google falló. Probá de nuevo.",
+      "set.google.err.failed": "✗ La conexión con Google falló. Prueba de nuevo.",
       "set.sense.title": "Recolección de datos",
       "set.sense.needs_google":
-        "Configurá el ID y el secreto del cliente OAuth de Google arriba para poder recolectar datos.",
-      "set.sense.needs_connection": "Conectá tu cuenta de Google arriba antes de recolectar datos.",
+        "Configura el ID y el secreto del cliente OAuth de Google arriba para poder recolectar datos.",
+      "set.sense.needs_connection": "Conecta tu cuenta de Google arriba antes de recolectar datos.",
       "set.sense.needs_site_url":
-        "Falta la URL del sitio en Search Console. Configurala en la sección Google de abajo.",
+        "Falta la URL del sitio en Search Console. Configúrala en la sección Google de abajo.",
       "set.sense.run": "Ejecutar recolección",
       "set.sense.running": "Recolectando… puede tardar un rato en sitios grandes.",
       "set.sense.hint":
@@ -216,9 +216,9 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "set.field.ga4_property_id.hint": "ID numérico de tu propiedad de GA4, para las conversiones.",
       "set.field.google_oauth_client_id.label": "ID de cliente OAuth",
       "set.field.google_oauth_client_id.hint":
-        "Lo obtenés en Google Cloud Console (APIs de Search Console y de Analytics Data).",
+        "Lo obtienes en Google Cloud Console (APIs de Search Console y de Analytics Data).",
       "set.field.google_oauth_client_secret.label": "Secreto de cliente OAuth",
-      "set.field.google_oauth_client_secret.hint": "Lo obtenés en Google Cloud Console.",
+      "set.field.google_oauth_client_secret.hint": "Lo obtienes en Google Cloud Console.",
       "set.field.anthropic_api_key.label": "Clave API de Anthropic",
       "set.field.anthropic_api_key.hint":
         "Opcional — activa la explicación de la estrategia redactada por IA. Sin ella el motor funciona igual.",
