@@ -15,13 +15,15 @@ from ...infrastructure.google.gsc_adapter import GSCRankingProvider
 from ...infrastructure.persistence.db import make_session_factory
 from ...infrastructure.persistence.repository import RankingRepository
 from ...infrastructure.providers.crawler import HttpxCrawler
-from .guards import require_write_access
+from .guards import require_token, require_write_access
 
 app = FastAPI(title="AceleraSEO — Engine", version="0.1.0")
 
 # Endpoints that change state (settings, the database, a managed site, or an
 # external index) must declare this. See guards.py.
 _WRITE = [Depends(require_write_access)]
+# Endpoints that spend a provider's quota or fetch URLs: token only, so the demo works.
+_COSTLY = [Depends(require_token)]
 
 
 @app.get("/health")
@@ -53,7 +55,7 @@ def update_settings(body: _SettingsIn) -> dict:
     return {"saved": True, "fields": describe(get_settings())}
 
 
-@app.post("/settings/verify-llm")
+@app.post("/settings/verify-llm", dependencies=_COSTLY)
 def verify_llm_key() -> dict:
     """Check the currently-saved LLM key against Anthropic (no tokens spent).
 
@@ -106,7 +108,7 @@ def sense_run(days: int = 90) -> dict:
     }
 
 
-@app.post("/audit/run")
+@app.post("/audit/run", dependencies=_COSTLY)
 def audit_run(start_url: str, max_pages: int = 200, max_depth: int = 5,
               render: bool = False) -> dict:
     """Crawl a site and return a severity-tagged technical SEO audit.
@@ -155,7 +157,7 @@ class _DiscoverIn(BaseModel):
     max_keywords: int = 20
 
 
-@app.post("/strategy/discover")
+@app.post("/strategy/discover", dependencies=_COSTLY)
 def strategy_discover(body: _DiscoverIn) -> dict:
     """Describe your niche -> the LLM finds keywords (DataForSEO enriches), then
     the engine ranks the winnable ones. Needs an LLM key, so it is unavailable
@@ -185,7 +187,7 @@ def strategy_discover(body: _DiscoverIn) -> dict:
     return _serialise_plan(plan)
 
 
-@app.post("/strategy/preview")
+@app.post("/strategy/preview", dependencies=_COSTLY)
 def strategy_preview(body: _StrategyIn) -> dict:
     """DECIDE: classify + score keywords + derive actions + LLM summary.
 
@@ -356,7 +358,7 @@ def cms_update_page(body: _SeoPageIn) -> dict:
     return result
 
 
-@app.post("/settings/verify-cms")
+@app.post("/settings/verify-cms", dependencies=_COSTLY)
 def verify_cms_key() -> dict:
     """Probe the Noor CMS API key without performing a write.
 
@@ -374,7 +376,7 @@ class _CompetitorIn(BaseModel):
     language: str = "es"
 
 
-@app.post("/competitors/analyze")
+@app.post("/competitors/analyze", dependencies=_COSTLY)
 def competitors_analyze(body: _CompetitorIn) -> dict:
     """Find top organic competitors for a domain and their ranked keywords.
 
