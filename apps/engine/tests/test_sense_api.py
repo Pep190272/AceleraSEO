@@ -4,13 +4,15 @@ Google is never contacted — the ranking/analytics providers are replaced with
 fakes at the app-module boundary, so no test here can make a live API call.
 """
 import json
+import socket
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import httplib2
 import pytest
 from fastapi.testclient import TestClient
-from google.auth.exceptions import RefreshError
-from google.api_core.exceptions import PermissionDenied
+from google.api_core.exceptions import PermissionDenied, RetryError
+from google.auth.exceptions import RefreshError, TransportError
 from google.oauth2.credentials import Credentials
 from googleapiclient.errors import HttpError
 
@@ -148,6 +150,17 @@ def test_sense_run_when_refresh_is_rejected_is_401_not_500(client, monkeypatch):
     assert "reconnect" in res.json()["detail"].lower()
 
 
+def test_sense_run_when_refresh_cannot_reach_google_is_502_not_a_reconnect(client, monkeypatch):
+    def unreachable_refresh(self, request):
+        raise TransportError("Failed to resolve oauth2.googleapis.com")
+
+    monkeypatch.setattr(Credentials, "refresh", unreachable_refresh)
+    _write_token(client.settings, expired=True)
+    res = client.post("/sense/run")
+    assert res.status_code == 502
+    assert "reconnect" not in res.json()["detail"].lower()
+
+
 # ── success path ──
 def test_sense_run_success_reports_counts_and_ga4_configured(client, fake_providers):
     _write_token(client.settings, expired=False)
@@ -178,7 +191,7 @@ def test_sense_run_rejects_an_out_of_range_days(client):
 # ── Google API failures once collection is under way ──
 @pytest.mark.parametrize(
     "google_status,expected_status",
-    [(400, 400), (401, 401), (403, 401), (404, 400), (429, 429), (500, 502)],  # 500 = anything unrecognized
+    [(400, 400), (401, 401), (403, 401), (404, 400), (429, 429), (504, 504), (500, 502)],  # 500 = anything unrecognized
 )
 def test_sense_run_maps_google_api_failures_not_a_raw_500(
     client, monkeypatch, google_status, expected_status
@@ -206,3 +219,32 @@ def test_sense_run_maps_a_ga4_rejection_not_a_raw_500(client, tmp_path, monkeypa
     res = client.post("/sense/run")
     assert res.status_code == 401  # PermissionDenied.code == 403 -> mapped to 401
     assert "detail" in res.json()
+
+
+# ── Google unreachable or too slow once collection is under way ──
+@pytest.mark.parametrize(
+    "exc,expected_status",
+    [
+        (httplib2.ServerNotFoundError("Unable to find the server at oauth2.googleapis.com"), 502),
+        (socket.gaierror(11001, "getaddrinfo failed"), 502),
+        (ConnectionResetError("connection reset by peer"), 502),
+        (TransportError("could not reach the token endpoint"), 502),
+        (TimeoutError("timed out"), 504),
+        (RetryError("Timeout of 600.0s exceeded", cause=None), 504),
+    ],
+    ids=["dns-httplib2", "dns-socket", "connection-reset", "auth-transport", "timeout", "ga4-retry"],
+)
+def test_sense_run_maps_network_failures_not_a_raw_500(client, monkeypatch, exc, expected_status):
+    class NetworkFailingRankingProvider:
+        def __init__(self, credentials):
+            pass
+
+        def fetch_rankings(self, site_url, days):
+            raise exc
+
+    monkeypatch.setattr(app_module, "GSCRankingProvider", NetworkFailingRankingProvider)
+    monkeypatch.setattr(app_module, "GA4AnalyticsProvider", FakeAnalyticsProvider)
+    _write_token(client.settings, expired=False)
+    res = client.post("/sense/run")
+    assert res.status_code == expected_status
+    assert "Google" in res.json()["detail"]

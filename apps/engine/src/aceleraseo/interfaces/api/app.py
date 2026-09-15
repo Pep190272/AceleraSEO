@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 import logging
+import socket
 from urllib.parse import urlencode
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import RedirectResponse
-from google.api_core.exceptions import GoogleAPICallError
-from google.auth.exceptions import GoogleAuthError
+from google.api_core.exceptions import GoogleAPICallError, RetryError
+from google.auth.exceptions import GoogleAuthError, TransportError
 from googleapiclient.errors import HttpError
+from httplib2 import HttpLib2Error
 from pydantic import BaseModel
 
 from ...application.crawl import CrawlSite
@@ -80,6 +82,11 @@ _DEMO_GOOGLE_MESSAGE = (
     "This is a shared demo — connecting a Google account is disabled, because the "
     "token would be shared with every visitor. Self-host to connect your own account."
 )
+
+_GOOGLE_UNREACHABLE_MESSAGE = (
+    "Could not reach Google — check the engine's internet connection and try again."
+)
+_GOOGLE_TIMEOUT_MESSAGE = "Google did not answer in time. Try again in a moment."
 
 _DEMO_SENSE_MESSAGE = (
     "This is a shared demo — running a collection is disabled, because it would "
@@ -165,7 +172,7 @@ def sense_run(days: int = Query(90, ge=1, le=480)) -> dict:
     raw 500: no connection (401), a broken/corrupt saved token (401, same
     remedy — reconnect), a missing site URL (400), and Google itself
     rejecting or rate-limiting the request once collection is under way
-    (400/401/429/502)."""
+    (400/401/429/502), or Google being unreachable or too slow (502/504)."""
     settings = get_settings()
     try:
         creds = oauth.load_credentials(settings)
@@ -179,6 +186,11 @@ def sense_run(days: int = Query(90, ge=1, le=480)) -> dict:
             "Google connection is broken (the saved token could not be read). "
             "Reconnect from Settings.",
         ) from exc
+    except TransportError as exc:
+        # The token expired and refreshing it could not reach Google. The account
+        # is fine — the engine's network is not — so do not tell the user to reconnect.
+        logger.warning("Google token refresh could not reach Google (%s).", type(exc).__name__)
+        raise HTTPException(502, _GOOGLE_UNREACHABLE_MESSAGE) from exc
     except GoogleAuthError as exc:
         logger.warning("Google token refresh failed (%s).", type(exc).__name__)
         raise HTTPException(
@@ -232,6 +244,8 @@ def sense_run(days: int = Query(90, ge=1, le=480)) -> dict:
                 "Google did not accept the Search Console site URL or GA4 property ID. "
                 "Check both in the Settings tab → Google.",
             ) from exc
+        if status == 504:
+            raise HTTPException(504, _GOOGLE_TIMEOUT_MESSAGE) from exc
         if status == 429:
             raise HTTPException(
                 429, "Google's API rate limit was hit. Wait a moment and try again.",
@@ -239,6 +253,18 @@ def sense_run(days: int = Query(90, ge=1, le=480)) -> dict:
         raise HTTPException(
             502, "Google's API is unavailable right now. Try again shortly.",
         ) from exc
+    except (TimeoutError, RetryError) as exc:
+        # A socket timeout (Search Console) or GA4's retry budget running out:
+        # Google did not answer in time. Nothing was rejected; retrying may work.
+        logger.warning("Google did not answer in time during SENSE collection (%s).",
+                       type(exc).__name__)
+        raise HTTPException(504, _GOOGLE_TIMEOUT_MESSAGE) from exc
+    except (ConnectionError, socket.gaierror, HttpLib2Error, TransportError) as exc:
+        # DNS failure, refused/reset connection, or a token refresh that could not
+        # reach Google: the engine has no route to Google, not a Google-side error.
+        logger.warning("Could not reach Google during SENSE collection (%s).",
+                       type(exc).__name__)
+        raise HTTPException(502, _GOOGLE_UNREACHABLE_MESSAGE) from exc
     return {
         "rankings_fetched": result.rankings_fetched,
         "rankings_new": result.rankings_new,
