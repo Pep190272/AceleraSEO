@@ -36,8 +36,19 @@ export async function engineFetch(path: string, init?: RequestInit) {
     }
     // Headers are exposed for callers that pass `redirect: "manual"` and need the
     // engine's Location (the Google consent redirect).
-    return { ok: res.ok, status: res.status, headers: res.headers, body };
+    return { ok: res.ok, status: res.status, headers: res.headers, body, timedOut: false };
   } catch {
+    // Our own timeout fired: the engine may still be working on the request,
+    // so this must not be reported as "unreachable".
+    if (controller.signal.aborted) {
+      return {
+        ok: false,
+        status: 504,
+        headers: new Headers(),
+        body: { error: "Engine did not respond in time" },
+        timedOut: true,
+      } as const;
+    }
     // Network errors (ECONNREFUSED, DNS failure, timeout/abort) must not
     // surface as unhandled 500s. Return a stable 503 shape instead.
     return {
@@ -45,6 +56,7 @@ export async function engineFetch(path: string, init?: RequestInit) {
       status: 503,
       headers: new Headers(),
       body: { error: "Engine unreachable" },
+      timedOut: false,
     } as const;
   } finally {
     clearTimeout(timer);
