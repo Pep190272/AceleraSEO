@@ -88,11 +88,6 @@ _GOOGLE_UNREACHABLE_MESSAGE = (
 )
 _GOOGLE_TIMEOUT_MESSAGE = "Google did not answer in time. Try again in a moment."
 
-_DEMO_SENSE_MESSAGE = (
-    "This is a shared demo — running a collection is disabled, because it would "
-    "write into a shared database. Self-host to connect your own account and run it here."
-)
-
 
 @app.get("/auth/google/status")
 def google_status() -> dict:

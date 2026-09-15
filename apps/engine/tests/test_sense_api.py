@@ -37,9 +37,11 @@ def _settings(tmp_path, **overrides) -> Settings:
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.delenv("DEMO_MODE", raising=False)
+    # /sense/run is a guarded write: the engine requires ENGINE_API_TOKEN.
+    monkeypatch.setenv("ENGINE_API_TOKEN", "local-test-token")
     settings = _settings(tmp_path)
     monkeypatch.setattr(app_module, "get_settings", lambda: settings)
-    c = TestClient(app_module.app)
+    c = TestClient(app_module.app, headers={"X-Engine-Token": "local-test-token"})
     c.settings = settings
     return c
 
