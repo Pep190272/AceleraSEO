@@ -75,8 +75,10 @@ def test_a_valid_token_passes_the_guard(client, monkeypatch, method, path, body)
 
 
 @pytest.mark.parametrize("method,path,body", WRITE_ENDPOINTS)
-def test_without_a_token_configured_local_calls_pass_the_guard(client, method, path, body):
-    assert _call(client, method, path, body).status_code == 500
+def test_without_a_token_configured_writes_fail_closed(client, method, path, body):
+    res = _call(client, method, path, body)
+    assert res.status_code == 503
+    assert "ENGINE_API_TOKEN" in res.json()["detail"]
 
 
 # (method, path, json body, query) for endpoints that change no state but spend a
@@ -106,6 +108,22 @@ def test_costly_endpoints_stay_available_in_demo_mode(client, monkeypatch, metho
     res = getattr(client, method)(path, json=body, params=query,
                                   headers={"X-Engine-Token": "local-test-token"})
     assert res.status_code not in (401, 403)
+
+
+@pytest.mark.parametrize("method,path,body,query", COSTLY_ENDPOINTS)
+def test_without_a_token_configured_costly_endpoints_fail_closed(client, method, path, body, query):
+    res = getattr(client, method)(path, json=body, params=query)
+    assert res.status_code == 503
+    assert "ENGINE_API_TOKEN" in res.json()["detail"]
+
+
+def test_startup_warns_when_no_token_is_configured(monkeypatch, caplog):
+    from aceleraseo.interfaces.api.guards import warn_if_token_missing
+
+    monkeypatch.delenv("ENGINE_API_TOKEN", raising=False)
+    with caplog.at_level("WARNING"):
+        warn_if_token_missing()
+    assert "ENGINE_API_TOKEN" in caplog.text
 
 
 def test_every_state_changing_route_is_guarded():

@@ -15,9 +15,10 @@ from ...infrastructure.google.gsc_adapter import GSCRankingProvider
 from ...infrastructure.persistence.db import make_session_factory
 from ...infrastructure.persistence.repository import RankingRepository
 from ...infrastructure.providers.crawler import HttpxCrawler
-from .guards import require_token, require_write_access
+from .guards import require_token, require_write_access, warn_if_token_missing
 
 app = FastAPI(title="AceleraSEO — Engine", version="0.1.0")
+warn_if_token_missing()
 
 # Endpoints that change state (settings, the database, a managed site, or an
 # external index) must declare this. See guards.py.
