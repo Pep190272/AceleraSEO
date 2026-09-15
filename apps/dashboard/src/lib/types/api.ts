@@ -65,3 +65,16 @@ export type CompetitorResult = {
   domain: string;
   competitors: Competitor[];
 };
+
+// ── Google connection (SettingsTool + SenseRunPanel) ──────────
+
+export type GoogleStatus = { configured: boolean; connected: boolean };
+
+// ── SenseRunPanel ────────────────────────────────────────────
+
+export type SenseResult = {
+  rankings_fetched: number;
+  rankings_new: number;
+  pages_with_conversions: number;
+  ga4_configured: boolean;
+};
