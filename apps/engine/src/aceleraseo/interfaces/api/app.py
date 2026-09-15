@@ -1,6 +1,9 @@
 """FastAPI surface for SENSE: Google OAuth consent + trigger a collection cycle."""
 from __future__ import annotations
 
+import logging
+from urllib.parse import urlencode
+
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
@@ -17,6 +20,8 @@ from ...infrastructure.persistence.repository import RankingRepository
 from ...infrastructure.providers.crawler import HttpxCrawler
 from ...infrastructure.providers.url_safety import UnsafeURLError, ensure_public_url
 from .guards import require_token, require_write_access, warn_if_token_missing
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="AceleraSEO — Engine", version="0.1.0")
 warn_if_token_missing()
@@ -68,19 +73,80 @@ def verify_llm_key() -> dict:
     return verify_llm(get_settings())
 
 
+_DEMO_GOOGLE_MESSAGE = (
+    "This is a shared demo — connecting a Google account is disabled, because the "
+    "token would be shared with every visitor. Self-host to connect your own account."
+)
+
+
+@app.get("/auth/google/status")
+def google_status() -> dict:
+    """Whether Google OAuth is configured and a usable token is cached.
+
+    Booleans only — never a token, client id or secret."""
+    settings = get_settings()
+    return {
+        "configured": oauth.is_configured(settings),
+        "connected": oauth.is_connected(settings),
+    }
+
+
 @app.get("/auth/google/login")
 def google_login() -> RedirectResponse:
+    """Start Google consent. Blocked in demo mode, like writing settings."""
+    from ...infrastructure.config import is_demo_mode
+
+    if is_demo_mode():
+        raise HTTPException(403, _DEMO_GOOGLE_MESSAGE)
     settings = get_settings()
-    if not settings.google_oauth_client_id:
-        raise HTTPException(500, "Google OAuth client not configured (.env).")
+    if not oauth.is_configured(settings):
+        raise HTTPException(
+            400,
+            "Google OAuth is not configured. Add the OAuth client ID and secret in the "
+            "Settings tab → Google.",
+        )
     return RedirectResponse(oauth.authorization_url(settings))
 
 
+def _back_to_settings(outcome: str, reason: str | None = None) -> RedirectResponse:
+    """Send the browser back to the dashboard Settings tab with the consent outcome."""
+    params = {"tab": "settings", "google": outcome}
+    if reason:
+        params["reason"] = reason
+    base = get_settings().dashboard_url.rstrip("/")
+    return RedirectResponse(f"{base}/?{urlencode(params)}", status_code=303)
+
+
 @app.get("/auth/google/callback")
-def google_callback(code: str = Query(...)) -> dict:
-    settings = get_settings()
-    oauth.exchange_code(settings, code)
-    return {"status": "authorized", "message": "Token cached. You can now run /sense/run."}
+def google_callback(
+    code: str | None = Query(None),
+    state: str | None = Query(None),
+    error: str | None = Query(None),
+) -> RedirectResponse:
+    """Google redirects here after consent. Always answers with a redirect to the
+    dashboard, so the user never lands on a bare JSON page."""
+    from ...infrastructure.config import is_demo_mode
+
+    if is_demo_mode():
+        return _back_to_settings("error", "demo")
+    if error:
+        # The user cancelled (access_denied) or Google refused the request.
+        if state:
+            oauth.discard_state(state)
+        return _back_to_settings("error", "denied" if error == "access_denied" else "failed")
+    if not code or not state:
+        return _back_to_settings("error", "invalid_request")
+
+    try:
+        oauth.exchange_code(get_settings(), code, state)
+    except oauth.InvalidStateError:
+        return _back_to_settings("error", "state")
+    except Exception:
+        # Token endpoint rejection, network failure or scope mismatch. Logged with
+        # the traceback; the user gets a readable message and can retry.
+        logger.exception("Google OAuth code exchange failed.")
+        return _back_to_settings("error", "exchange")
+    return _back_to_settings("connected")
 
 
 @app.post("/sense/run", dependencies=_WRITE)

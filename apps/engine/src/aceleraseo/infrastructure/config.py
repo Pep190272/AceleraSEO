@@ -45,6 +45,10 @@ class Settings(BaseSettings):
     # Where the OAuth token is cached after the consent flow (gitignored).
     google_token_file: str = "./gsc-token.json"
 
+    # Public base URL of the dashboard. The OAuth callback lands on the engine,
+    # which then sends the browser back to the dashboard's Settings tab.
+    dashboard_url: str = "http://localhost:3000"
+
     # Market data (bring-your-own-key — ADR-0001).
     dataforseo_login: str = ""
     dataforseo_password: str = ""
