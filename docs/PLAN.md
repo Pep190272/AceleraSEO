@@ -161,9 +161,12 @@ when finished. None requires a paid provider.
 
 Prerequisite. Two mechanical problems:
 
-1. **`.env` holds only variable names, never filled in.** At minimum: Google OAuth client
-   id/secret and `GSC_SITE_URL`. Everything else can stay empty — `docs/API-LIMITS.md`
-   says what each missing key costs.
+1. **`.env` has values, but not usable Google ones.** (Corrected 2026-09-15: an earlier
+   version said it held only names.) The keys are filled in, but `GSC_SITE_URL` is the
+   placeholder `sc-domain:example.com`, and the Google OAuth client id/secret do not have
+   the shape of a real client (the id lacks the `.apps.googleusercontent.com` suffix).
+   At minimum those three need real values. Everything else can stay as is —
+   `docs/API-LIMITS.md` says what each missing key costs.
 2. **The running image is stale.** `aceleraseo/engine:latest` was built 2026-05-31; the
    code is from 2026-08-24. The running container has no `/cms/*` and no
    `/competitors/analyze`. `docker compose up -d --build`.
