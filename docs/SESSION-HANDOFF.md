@@ -1,50 +1,47 @@
 # Session handoff — AceleraSEO
 
-## Session 2026-09-15 (Block A, 07:10–12:00) — latest
+## Session 2026-09-15 — latest
 
 **Read this section first.** Everything below it is the 2026-05-31 snapshot.
 
-### Where things stand
+### Where things stand (end of day)
 
-- **`main` = `3a34584`.**
-  - Merged today: #9 (`next` 15.5.24), #19 (dead SiteTool deleted), #18 (Spanish settings labels), #20 (write guards, loopback binding, required token), #21 (audit SSRF protection).
-- **Open, rebased onto `3a34584`, CI green, not merged:**
-  - #15 Connect Google, head `27dff35`, base `main`
-  - #16 SENSE honest failures, head `8def26c`, base `feat/connect-google`
-  - #17 SENSE panel, head `d52d699`, base `feat/sense-run-engine`
-
-  **The only blocker is a real Google consent test.** The merge map and follow-ups are in the comment on #15.
-- **The engine now requires `ENGINE_API_TOKEN`.** Without it, write and paid endpoints answer 503 and startup logs how to set it. The dashboard must send the same value (`X-Engine-Token`, server-side). A token was generated into the local `.env`.
+- **Merged today**, all merge commits after green CI:
+  - #9 `next` 15.5.24
+  - #19 dead SiteTool deleted
+  - #18 Spanish settings labels
+  - #20 write/token guards, loopback binding, `ENGINE_API_TOKEN` required (fail-closed)
+  - #21 audit SSRF protection
+  - #15/#16/#17 Connect Google, SENSE honest failures, SENSE panel
+  - #24 issue forms
+  - #30 neutral Spanish (tú) instead of voseo
+  - #31 placeholders read as "not configured", and SENSE errors name the failing ID
+- **Google is connected** on the local instance, and SENSE has collected 4,811 positions for the configured Search Console property.
+- **The engine requires `ENGINE_API_TOKEN`.** Without it, write and paid endpoints answer 503 and startup logs how to set it. The dashboard must send the same value (`X-Engine-Token`, server-side). The local `.env` has one.
 - **The engine is published on `127.0.0.1:8000` only.**
 
-### Running right now (left up for the consent test)
+### Running locally
 
-- **Engine:** Docker `aceleraseo-engine`, started with `main`'s compose file (loopback, `.env` with the token). Its image was built from a local, **unpushed** merge of `main` + #15/#16/#17: commit `20a207d` in worktree `.claude/worktrees/consent-test`, so `/auth/google/*` exists. That tree equals the #17 head `d52d699` except for #16's test-fixture token fix and one removed unused constant, so the code under test is the code up for review.
-- **Dashboard:** `next start -H 127.0.0.1 -p 3000` from the same worktree, with `ENGINE_API_TOKEN` read from `.env`.
-- **To return to plain `main`:** stop port 3000, then run `docker compose up -d --build` from the main checkout.
+- **Engine:** Docker `aceleraseo-engine` from `main` (`docker compose up -d --build`). The data volume holds the Google token, settings overrides and the ranking series; a rebuild keeps them, as verified on 2026-09-15.
+- **Dashboard:** `next start -H 127.0.0.1 -p 3000` from `apps/dashboard` on `main`, with `ENGINE_URL=http://localhost:8000` and `ENGINE_API_TOKEN` from `.env`.
+- **To stop:** kill the process listening on :3000, then run `docker compose down`.
 
-### Consent test (for Josep)
+### Competitors without a paid API
 
-1. **`.env`'s Google OAuth client is a placeholder, not a real client.** The id is 19 characters and lacks `.apps.googleusercontent.com`, and `GSC_SITE_URL` is `sc-domain:example.com`. In Google Cloud Console:
-   - create a Web OAuth client with redirect URI `http://localhost:8000/auth/google/callback`;
-   - enable the Search Console API and the Analytics Data API;
-   - add yourself as a test user.
-2. Open `http://localhost:3000/?tab=settings`, paste the real client ID and secret, and click **Guardar ajustes**.
-3. Click **Conectar Google** and give consent. Success: back on Settings with "✓ Google conectado…" and "● Conectado".
-4. Then merge #15, retarget #16 to `main` and merge it, then retarget #17 to `main` and merge it.
+DataForSEO credentials in `.env` are placeholders, so `/competitors/analyze` answers 503 (shown in the tab).
 
-### Follow-ups not yet filed as issues
+Research on 2026-09-15 found no free, Terms-of-Service-clean source of **real Google** rankings:
+- SerpApi and SearXNG scrape Google;
+- Google Custom Search JSON API is closed to new customers and shuts down 2027-01-01;
+- Bing Web Search API was retired 2025-08-11.
 
-The repo has no YAML Issue Forms (`.github/ISSUE_TEMPLATE`), and the issue workflow requires them, so these were not filed. They come from the review of the rebased stack; line numbers are on the PR heads above.
+Brave Search API (https://brave.com/search/api/) gives $5 in free credits a month (about 1,000 queries) and forbids storing results. A free opt-in adapter is in progress: it takes your top Search Console queries and runs them through Brave Search. Its positions come from Brave's index, not Google's. It needs a Brave key pasted in Settings.
 
-1. **"Engine offline" shows as "Not connected" (#15).** `apps/engine/src/aceleraseo/infrastructure/google/oauth.py:182`: `except GoogleAuthError` also catches `TransportError`, so a network outage makes the UI say to reconnect. `sense_run` already handles the same error as a 502.
-2. **An auth failure mid-collection can still return a raw 500 (#16).** `apps/engine/src/aceleraseo/interfaces/api/app.py:211-257`: a `RefreshError` raised during `use_case.execute` escapes the second `try`. It should map to 401 "Reconnect from Settings".
-3. **A crafted `?reason=` breaks the error message (#15).** `apps/dashboard/src/components/SettingsTool.tsx:98`: `GOOGLE_ERROR_KEYS[reason]` on a plain object, so `?reason=constructor` finds `Object` and renders nothing. `Object.hasOwn` or a `Map` fixes it.
-4. **A disk error shows the wrong message (#15).** `apps/engine/src/aceleraseo/interfaces/api/app.py:144`: in the OAuth callback, `except Exception` also catches an `OSError` from `save_credentials`, and the user is told to check the OAuth client.
+### Open items
 
-### Decisions still open for Josep
-
-- **Rendering on self-hosted engines:** whether `render=True` should also be refused there. It is refused in demo mode because Playwright cannot intercept redirect hops or WebSockets.
+- **#22** (`next` 15 → 16, major): needs its own session for breaking-change review, security delta and local build.
+- **#25–#28:** follow-up bugs from the review of the Google/SENSE stack.
+- **#29:** decision on whether `render=true` should also be refused on self-hosted engines.
 
 ### Learned today
 
