@@ -1,0 +1,31 @@
+name: Decision needed
+description: A product or security choice that a maintainer has to make.
+title: "decision: "
+labels: ["question"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: The decision to make, in one or two sentences.
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Why it came up and what the code does today (file:line, PR).
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Options and tradeoffs
+    validations:
+      required: true
+  - type: textarea
+    id: recommendation
+    attributes:
+      label: Recommendation
+    validations:
+      required: false

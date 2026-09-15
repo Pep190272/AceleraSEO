@@ -1,0 +1,38 @@
+name: Bug report
+description: Something in AceleraSEO behaves incorrectly.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what-happens
+    attributes:
+      label: What happens
+      description: The incorrect behaviour, as observed.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen
+    validations:
+      required: true
+  - type: textarea
+    id: where
+    attributes:
+      label: Where
+      description: File and line (for example `apps/engine/src/.../app.py:144`) and the PR or commit that introduced it, if known.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: Minimal steps, request or input.
+    validations:
+      required: false
+  - type: textarea
+    id: fix
+    attributes:
+      label: Suggested fix
+    validations:
+      required: false
