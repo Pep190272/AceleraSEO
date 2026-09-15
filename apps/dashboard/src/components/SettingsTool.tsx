@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { useT } from "@/lib/i18n";
+import { hasTranslation, useT } from "@/lib/i18n";
 
 type Field = {
   key: string;
@@ -18,7 +18,7 @@ type Field = {
 type SettingsResponse = { demo_mode: boolean; fields: Field[] };
 
 export default function SettingsTool() {
-  const { t } = useT();
+  const { lang, t } = useT();
   const [demo, setDemo] = useState(false);
   const [fields, setFields] = useState<Field[]>([]);
   const [edits, setEdits] = useState<Record<string, string>>({});
@@ -97,6 +97,14 @@ export default function SettingsTool() {
     }
   }
 
+  // The engine describes fields in English, which English shows as-is. Other
+  // languages use their own strings, falling back to the engine's text for any
+  // field that has no translation yet.
+  function localized(key: string, engineText: string) {
+    return hasTranslation(lang, key) ? t(key) : engineText;
+  }
+  const groupKey = (group: string) => `set.group.${group.toLowerCase().replace(/\s+/g, "_")}`;
+
   if (loading) return <div className="panel">{t("set.loading")}</div>;
 
   const groups = Array.from(new Set(fields.map((f) => f.group)));
@@ -121,14 +129,14 @@ export default function SettingsTool() {
               letterSpacing: "0.05em",
             }}
           >
-            {group}
+            {localized(groupKey(group), group)}
           </h3>
           {fields
             .filter((f) => f.group === group)
             .map((f) => (
               <div className="field" key={f.key}>
                 <label>
-                  {f.label}
+                  {localized(`set.field.${f.key}.label`, f.label)}
                   {f.secret && f.is_set && (
                     <span style={{ color: "var(--accent)", marginLeft: "0.5rem" }}>
                       {t("set.configured")}
@@ -148,7 +156,9 @@ export default function SettingsTool() {
                   defaultValue={f.secret ? "" : f.value}
                   onChange={(e) => setEdits((prev) => ({ ...prev, [f.key]: e.target.value }))}
                 />
-                <p className="hint">{f.description}</p>
+                <p className="hint">
+                  {localized(`set.field.${f.key}.hint`, f.description)}
+                </p>
               </div>
             ))}
         </div>

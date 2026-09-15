@@ -23,6 +23,7 @@ type NamespacedDict = {
   audit: Record<string, string>;
   comp: Record<string, string>;
   set: Record<string, string>;
+  setFields: Record<string, string>;
   common: Record<string, string>;
 };
 
@@ -153,6 +154,51 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "set.noor.verify.ok": "✓ Conexión con Noor OK",
       "set.noor.verify.fail": "✗ No se pudo conectar con Noor",
       "set.noor.verify.hint": "Comprueba que la URL base y la clave API de Noor son correctas.",
+    },
+    // Spanish settings field labels and hints, keyed by the engine's field key and
+    // group. The engine's English text is the source; English shows it unchanged.
+    setFields: {
+      "set.group.google": "Google",
+      "set.group.ai_strategist": "Estratega IA",
+      "set.group.market_data": "Datos de mercado",
+      "set.group.indexing": "Indexación",
+      "set.group.safety": "Seguridad",
+      "set.group.noor_cms": "CMS Noor",
+      "set.field.gsc_site_url.label": "URL del sitio en Search Console",
+      "set.field.gsc_site_url.hint":
+        "Por ejemplo sc-domain:ejemplo.com — la propiedad de la que se leen tus posiciones.",
+      "set.field.ga4_property_id.label": "ID de propiedad de GA4",
+      "set.field.ga4_property_id.hint": "ID numérico de tu propiedad de GA4, para las conversiones.",
+      "set.field.google_oauth_client_id.label": "ID de cliente OAuth",
+      "set.field.google_oauth_client_id.hint":
+        "Lo obtenés en Google Cloud Console (APIs de Search Console y de Analytics Data).",
+      "set.field.google_oauth_client_secret.label": "Secreto de cliente OAuth",
+      "set.field.google_oauth_client_secret.hint": "Lo obtenés en Google Cloud Console.",
+      "set.field.anthropic_api_key.label": "Clave API de Anthropic",
+      "set.field.anthropic_api_key.hint":
+        "Opcional — activa la explicación de la estrategia redactada por IA. Sin ella el motor funciona igual.",
+      "set.field.anthropic_model.label": "Modelo de Anthropic",
+      "set.field.anthropic_model.hint": "ID del modelo que redacta la explicación de la estrategia.",
+      "set.field.dataforseo_login.label": "Usuario de DataForSEO",
+      "set.field.dataforseo_login.hint":
+        "Opcional — volumen y dificultad de palabras clave, con tu propia cuenta.",
+      "set.field.dataforseo_password.label": "Contraseña de DataForSEO",
+      "set.field.dataforseo_password.hint": "Opcional — va junto con el usuario de arriba.",
+      "set.field.indexnow_key.label": "Clave de IndexNow",
+      "set.field.indexnow_key.hint": "Opcional — indexación inmediata en Bing y Yandex (no en Google).",
+      "set.field.indexnow_key_location.label": "URL de la clave de IndexNow",
+      "set.field.indexnow_key_location.hint":
+        "URL pública donde está publicado tu archivo de clave de IndexNow.",
+      "set.field.autonomy_mode.label": "Modo de autonomía",
+      "set.field.autonomy_mode.hint":
+        "none = solo propone (lo más seguro, por defecto) · limited = limitado · full = total.",
+      "set.field.max_auto_actions_per_day.label": "Máximo de acciones automáticas por día",
+      "set.field.max_auto_actions_per_day.hint": "Tope estricto cuando la autonomía no es 'none'.",
+      "set.field.noor_base_url.label": "URL base de Noor",
+      "set.field.noor_base_url.hint":
+        "URL base del sitio Noor que vas a gestionar, por ejemplo https://example.com.",
+      "set.field.noor_api_key.label": "Clave API de Noor",
+      "set.field.noor_api_key.hint": "Clave X-API-Key para autenticarse en la API SEO de Noor.",
     },
     common: {
       "common.error": "Error",
@@ -286,6 +332,8 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "set.noor.verify.fail": "✗ Could not connect to Noor",
       "set.noor.verify.hint": "Checks that the Noor base URL and API key are correct.",
     },
+    // Empty on purpose: English shows the engine's own field text (see SettingsTool).
+    setFields: {},
     common: {
       "common.error": "Error",
       "common.unreachable": "Could not reach the engine.",
@@ -323,6 +371,12 @@ const STRINGS: Record<Lang, Dict> = {
 // ---------------------------------------------------------------------------
 
 export type TranslationKey = keyof typeof STRINGS.es;
+
+// True only when `lang` itself defines `key` — no English fallback and no dev
+// warning, for callers that have their own fallback text.
+export function hasTranslation(lang: Lang, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(STRINGS[lang], key);
+}
 
 // ---------------------------------------------------------------------------
 // Provider + hook
