@@ -19,7 +19,7 @@
 
 ### Running right now (left up for the consent test)
 
-- **Engine:** Docker `aceleraseo-engine`, started with `main`'s compose file (loopback, `.env` with the token). Its image was built from a local, **unpushed** merge of `main` + #15/#16/#17 (worktree `.claude/worktrees/consent-test`), so `/auth/google/*` exists.
+- **Engine:** Docker `aceleraseo-engine`, started with `main`'s compose file (loopback, `.env` with the token). Its image was built from a local, **unpushed** merge of `main` + #15/#16/#17: commit `20a207d` in worktree `.claude/worktrees/consent-test`, so `/auth/google/*` exists. That tree equals the #17 head `d52d699` except for #16's test-fixture token fix and one removed unused constant, so the code under test is the code up for review.
 - **Dashboard:** `next start -H 127.0.0.1 -p 3000` from the same worktree, with `ENGINE_API_TOKEN` read from `.env`.
 - **To return to plain `main`:** stop port 3000, then run `docker compose up -d --build` from the main checkout.
 
