@@ -143,7 +143,7 @@ name the gap rather than a line that no longer exists.
 | 3 | Hero copy says "Try it below" for four verbs; only one is below | Overstatement, discovered within a minute. | **open** — `i18n.tsx:225-226` (EN), `:46` (ES) |
 | 4 | SENSE / ACT / LEARN unreachable | The demo cannot show what the README promises. | **open** — slices 1–5; see §3 |
 | 5 | Core Web Vitals, index-status alerting and SerpApi claimed but absent | Reads as padding. | **fixed in the docs** — the claims are gone; building them is slice 7 and beyond |
-| 6 | Dead component with full copy shipped | Sloppiness, visible to anyone reading the source — which is the point of a showcase. | **open** — `SiteTool.tsx`, `i18n.tsx:137` (ES) and `:316` (EN) |
+| 6 | Dead component with full copy shipped | Sloppiness, visible to anyone reading the source — which is the point of a showcase. | **resolved** — deleted in slice 6 (component, `/api/cms/*` proxies, types, `site.*` copy) |
 | 7 | Setting with no adapter | Same. | **open** — `config.py:51` |
 
 Gaps 1, 2 and 5 were **documentation and copy**, and closing them took about three hours —
@@ -279,6 +279,13 @@ Leaving it dead is the only option that costs something every time somebody read
 repo — and being read is the point.
 
 Decide reading 3 versus readings 1 and 2 first (§1).
+
+> **Status (2026-09-15): deleted.** §1 already settles the reading: where they conflict,
+> 2 wins. Wiring it would have put a write path to a live client site into the public
+> dashboard, through an engine route (`PUT /cms/pages`) with no demo-mode guard. The
+> component also refetched on every language change with no cancellation, and typed
+> nullable fields as non-nullable. The engine's Noor adapter and `/cms/*` endpoints stay,
+> as the proof §1 describes. The `SiteTool` half of slice S goes with it.
 
 ### Slice 7 — Resolve `serpapi_key` (~1–2 h)
 
