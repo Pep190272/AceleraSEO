@@ -1,9 +1,17 @@
 """Pick an LLM adapter from settings. Falls back to NullLLM (no key required)."""
 from __future__ import annotations
 
+import logging
+from typing import TYPE_CHECKING
+
 from ..config import Settings
 from ..credentials import is_real_value as _is_real_key
 from .null_llm import NullLLM
+
+if TYPE_CHECKING:
+    from ...domain.ports import CompetitorProvider
+
+logger = logging.getLogger(__name__)
 
 
 def make_llm(settings: Settings):
@@ -62,15 +70,42 @@ def make_market(settings: Settings):
     return None
 
 
-def make_competitor(settings: Settings):
-    """DataForSEO competitor provider, or None if credentials are absent.
+def make_competitor(settings: Settings) -> CompetitorProvider | None:
+    """Competitor provider, or None if nothing usable is configured.
 
-    Uses the same DataForSEO credentials as the market provider — no extra setup
-    required if the user already has DataForSEO configured.
+    Prefers DataForSEO (same credentials as the market provider) when real
+    credentials are set. Otherwise, when a real Brave Search API key is
+    configured AND Google is connected AND a Search Console site is set,
+    falls back to the free BraveCompetitorProvider ("GSC queries x Brave
+    Search" — see infrastructure/providers/brave_competitors.py). Returns
+    None when neither is usable, so the endpoint keeps its 503.
     """
     if _is_real_key(settings.dataforseo_login) and _is_real_key(settings.dataforseo_password):
         from ..providers.dataforseo import DataForSEOMarketProvider
         return DataForSEOMarketProvider(settings.dataforseo_login, settings.dataforseo_password)
+
+    if _is_real_key(settings.brave_api_key) and settings.gsc_site_url:
+        from google.auth.exceptions import GoogleAuthError
+
+        from ..google import oauth
+        try:
+            creds = oauth.load_credentials(settings)
+        except (OSError, ValueError) as exc:
+            # Corrupt/unreadable token file — mirrors oauth.is_connected()'s handling.
+            logger.warning("Google token file is unreadable or corrupt (%s).", type(exc).__name__)
+            creds = None
+        except GoogleAuthError as exc:
+            logger.warning("Google token refresh failed (%s).", type(exc).__name__)
+            creds = None
+        if creds is not None:
+            from ..google.gsc_adapter import GSCRankingProvider
+            from ..providers.brave_competitors import BraveCompetitorProvider
+            return BraveCompetitorProvider(
+                api_key=settings.brave_api_key,
+                gsc_provider=GSCRankingProvider(creds),
+                gsc_site_url=settings.gsc_site_url,
+            )
+
     return None
 
 
