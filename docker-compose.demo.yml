@@ -20,6 +20,7 @@ services:
       SETTINGS_OVERRIDES_FILE: /app/data/settings-overrides.json
       APP_PORT: 8000
       DEMO_MODE: "true"          # shared instance → settings are read-only
+      ENGINE_API_TOKEN: ${ENGINE_API_TOKEN:?Set ENGINE_API_TOKEN in .env - see the README quick start}
     volumes:
       - demo-data:/app/data
     restart: unless-stopped
@@ -32,6 +33,7 @@ services:
     environment:
       # Server-side only; the dashboard reaches the engine over the compose network.
       ENGINE_URL: http://engine:8000
+      ENGINE_API_TOKEN: ${ENGINE_API_TOKEN:?Set ENGINE_API_TOKEN in .env - see the README quick start}
     ports:
       - "3000:3000"
     depends_on:

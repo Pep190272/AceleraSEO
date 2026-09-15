@@ -83,7 +83,9 @@ keyless mode and still produces a full plan.
 ```bash
 git clone https://github.com/Pep190272/AceleraSEO.git
 cd AceleraSEO
-cp .env.example .env          # leave it empty to run keyless
+cp .env.example .env          # API keys can stay empty to run keyless
+# Required: a shared token for the engine's write and paid endpoints (503 without it).
+python -c "import secrets; print('ENGINE_API_TOKEN=' + secrets.token_hex(32))" >> .env
 docker compose up             # engine → http://localhost:8000  (API docs at /docs)
 ```
 
@@ -91,7 +93,7 @@ To get the dashboard as well:
 
 ```bash
 docker compose -f docker-compose.demo.yml up --build
-# dashboard → http://localhost:3000    engine → http://localhost:8000
+# dashboard → http://localhost:3000   (reads ENGINE_API_TOKEN from .env; refuses to start without it)
 ```
 
 Open http://localhost:3000, go to **Strategy**, paste a few keywords, and you get a

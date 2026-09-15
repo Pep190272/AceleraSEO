@@ -19,7 +19,9 @@ services:
       GOOGLE_TOKEN_FILE: /app/data/gsc-token.json
       APP_PORT: 8000
     ports:
-      - "8000:8000"
+      # Loopback only: the engine has no user accounts. Its write and paid endpoints
+      # also require ENGINE_API_TOKEN from .env (see interfaces/api/guards.py).
+      - "127.0.0.1:8000:8000"
     volumes:
       - aceleraseo-data:/app/data
     restart: unless-stopped

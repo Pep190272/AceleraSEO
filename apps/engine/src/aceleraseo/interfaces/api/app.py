@@ -1,7 +1,7 @@
 """FastAPI surface for SENSE: Google OAuth consent + trigger a collection cycle."""
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
@@ -15,8 +15,16 @@ from ...infrastructure.google.gsc_adapter import GSCRankingProvider
 from ...infrastructure.persistence.db import make_session_factory
 from ...infrastructure.persistence.repository import RankingRepository
 from ...infrastructure.providers.crawler import HttpxCrawler
+from .guards import require_token, require_write_access, warn_if_token_missing
 
 app = FastAPI(title="AceleraSEO — Engine", version="0.1.0")
+warn_if_token_missing()
+
+# Endpoints that change state (settings, the database, a managed site, or an
+# external index) must declare this. See guards.py.
+_WRITE = [Depends(require_write_access)]
+# Endpoints that spend a provider's quota or fetch URLs: token only, so the demo works.
+_COSTLY = [Depends(require_token)]
 
 
 @app.get("/health")
@@ -37,24 +45,18 @@ class _SettingsIn(BaseModel):
     values: dict[str, str]
 
 
-@app.post("/settings")
+@app.post("/settings", dependencies=_WRITE)
 def update_settings(body: _SettingsIn) -> dict:
-    """Persist UI-provided config (no .env editing). Blocked in demo mode."""
-    from ...infrastructure.config import is_demo_mode, reload_settings
+    """Persist UI-provided config (no .env editing). Blocked in demo mode (_WRITE)."""
+    from ...infrastructure.config import reload_settings
     from ...infrastructure.settings_store import describe, save_overrides
 
-    if is_demo_mode():
-        raise HTTPException(
-            403,
-            "This is a shared demo — settings are read-only. Self-host to configure "
-            "your own keys (see the README).",
-        )
     save_overrides(body.values)
     reload_settings()
     return {"saved": True, "fields": describe(get_settings())}
 
 
-@app.post("/settings/verify-llm")
+@app.post("/settings/verify-llm", dependencies=_COSTLY)
 def verify_llm_key() -> dict:
     """Check the currently-saved LLM key against Anthropic (no tokens spent).
 
@@ -80,7 +82,7 @@ def google_callback(code: str = Query(...)) -> dict:
     return {"status": "authorized", "message": "Token cached. You can now run /sense/run."}
 
 
-@app.post("/sense/run")
+@app.post("/sense/run", dependencies=_WRITE)
 def sense_run(days: int = 90) -> dict:
     settings = get_settings()
     creds = oauth.load_credentials(settings)
@@ -107,7 +109,7 @@ def sense_run(days: int = 90) -> dict:
     }
 
 
-@app.post("/audit/run")
+@app.post("/audit/run", dependencies=_COSTLY)
 def audit_run(start_url: str, max_pages: int = 200, max_depth: int = 5,
               render: bool = False) -> dict:
     """Crawl a site and return a severity-tagged technical SEO audit.
@@ -156,7 +158,7 @@ class _DiscoverIn(BaseModel):
     max_keywords: int = 20
 
 
-@app.post("/strategy/discover")
+@app.post("/strategy/discover", dependencies=_COSTLY)
 def strategy_discover(body: _DiscoverIn) -> dict:
     """Describe your niche -> the LLM finds keywords (DataForSEO enriches), then
     the engine ranks the winnable ones. Needs an LLM key, so it is unavailable
@@ -186,7 +188,7 @@ def strategy_discover(body: _DiscoverIn) -> dict:
     return _serialise_plan(plan)
 
 
-@app.post("/strategy/preview")
+@app.post("/strategy/preview", dependencies=_COSTLY)
 def strategy_preview(body: _StrategyIn) -> dict:
     """DECIDE: classify + score keywords + derive actions + LLM summary.
 
@@ -318,7 +320,7 @@ class _SeoPageIn(BaseModel):
     meta_description: str | None = None
 
 
-@app.put("/cms/pages")
+@app.put("/cms/pages", dependencies=_WRITE)
 def cms_update_page(body: _SeoPageIn) -> dict:
     """Create or fully-replace a page's SEO metadata in the Noor site.
 
@@ -357,7 +359,7 @@ def cms_update_page(body: _SeoPageIn) -> dict:
     return result
 
 
-@app.post("/settings/verify-cms")
+@app.post("/settings/verify-cms", dependencies=_COSTLY)
 def verify_cms_key() -> dict:
     """Probe the Noor CMS API key without performing a write.
 
@@ -375,7 +377,7 @@ class _CompetitorIn(BaseModel):
     language: str = "es"
 
 
-@app.post("/competitors/analyze")
+@app.post("/competitors/analyze", dependencies=_COSTLY)
 def competitors_analyze(body: _CompetitorIn) -> dict:
     """Find top organic competitors for a domain and their ranked keywords.
 
@@ -430,7 +432,7 @@ class _IndexNowIn(BaseModel):
     urls: list[str]
 
 
-@app.post("/act/indexnow")
+@app.post("/act/indexnow", dependencies=_WRITE)
 def act_indexnow(body: _IndexNowIn) -> dict:
     """Submit URLs for instant indexing on Bing/Yandex/etc (NOT Google)."""
     from ...infrastructure.providers.indexnow import IndexNowIndexer
@@ -467,7 +469,7 @@ def list_proposals() -> dict:
     return {"pending": repo.pending()}
 
 
-@app.post("/act/proposals/{proposal_id}/{status}")
+@app.post("/act/proposals/{proposal_id}/{status}", dependencies=_WRITE)
 def update_proposal(proposal_id: int, status: str) -> dict:
     """Approve or reject a proposed action."""
     from ...infrastructure.persistence.proposals import ProposalRepository
