@@ -561,12 +561,49 @@ class _CompetitorIn(BaseModel):
     language: str = "es"
 
 
+def _competitors_google_error(exc: Exception) -> HTTPException:
+    """Map a Search Console failure raised while Brave-based competitor analysis
+    reads GSC to a readable status, never a raw 500.
+
+    BraveCompetitorProvider calls the same Search Console API sense_run does, so
+    this mirrors sense_run's exception-to-status mapping above for the same
+    exception families (HttpError/GoogleAPICallError, timeouts, unreachable).
+    """
+    if isinstance(exc, HttpError):
+        status = exc.resp.status if exc.resp is not None else 502
+    elif isinstance(exc, GoogleAPICallError):
+        status = int(exc.code) if exc.code is not None else 502
+    else:
+        status = None
+    if status is not None:
+        logger.warning("Google API call failed during Brave competitor analysis (%s).", status)
+        if status in (401, 403):
+            return HTTPException(
+                401,
+                "Google rejected the request — the connected account may not have "
+                "access to this Search Console property. Reconnect from Settings.",
+            )
+        if status == 429:
+            return HTTPException(429, "Google's API rate limit was hit. Wait a moment and try again.")
+        if status == 504:
+            return HTTPException(504, _GOOGLE_TIMEOUT_MESSAGE)
+        return HTTPException(502, "Google's API is unavailable right now. Try again shortly.")
+    if isinstance(exc, (TimeoutError, RetryError)):
+        logger.warning("Google did not answer in time during Brave competitor analysis (%s).",
+                       type(exc).__name__)
+        return HTTPException(504, _GOOGLE_TIMEOUT_MESSAGE)
+    logger.warning("Could not reach Google during Brave competitor analysis (%s).", type(exc).__name__)
+    return HTTPException(502, _GOOGLE_UNREACHABLE_MESSAGE)
+
+
 @app.post("/competitors/analyze", dependencies=_COSTLY)
 def competitors_analyze(body: _CompetitorIn) -> dict:
     """Find top organic competitors for a domain and their ranked keywords.
 
-    Requires DataForSEO credentials. Returns a 503 with a clear message if
-    they are absent so the UI can surface a helpful error rather than a raw 500.
+    Requires either DataForSEO credentials, or a free Brave Search API key plus
+    a connected Google Search Console (see infrastructure.providers.brave_competitors).
+    Returns a 503 with a clear message if neither is configured, so the UI can
+    surface a helpful error rather than a raw 500.
     """
     from ...application.competitors import (
         MAX_COMPETITORS,
@@ -574,6 +611,8 @@ def competitors_analyze(body: _CompetitorIn) -> dict:
         AnalyzeCompetitors,
     )
     from ...infrastructure.llm.factory import make_competitor
+    from ...infrastructure.providers.brave_competitors import GSC_LOOKBACK_DAYS, BraveSearchError
+    from ...infrastructure.providers.dataforseo import DataForSEOMarketProvider
 
     if not body.domain.strip():
         raise HTTPException(422, "A target domain is required.")
@@ -583,19 +622,44 @@ def competitors_analyze(body: _CompetitorIn) -> dict:
     if provider is None:
         raise HTTPException(
             503,
-            "Competitor analysis requires DataForSEO credentials (DATAFORSEO_LOGIN + "
-            "DATAFORSEO_PASSWORD). Configure them in the Settings tab.",
+            "Competitor analysis requires either DataForSEO credentials "
+            "(DATAFORSEO_LOGIN + DATAFORSEO_PASSWORD), or a free Brave Search API "
+            "key (BRAVE_API_KEY, brave.com/search/api) plus a connected Google "
+            "Search Console. Configure them in the Settings tab.",
         )
 
-    competitors = AnalyzeCompetitors(provider).execute(
-        target=body.domain.strip(),
-        location=body.location,
-        language=body.language,
-        max_competitors=MAX_COMPETITORS,
-        max_keywords_per_competitor=MAX_KEYWORDS_PER_COMPETITOR,
-    )
+    if isinstance(provider, DataForSEOMarketProvider):
+        source = "dataforseo"
+        notes = None
+    else:
+        source = "brave+gsc"
+        notes = (
+            "Positions come from Brave's search index, not Google. Keywords are "
+            f"limited to your own top Search Console queries from the last {GSC_LOOKBACK_DAYS} "
+            "days. Traffic and search volume are not available from this source (both 0)."
+        )
+
+    try:
+        competitors = AnalyzeCompetitors(provider).execute(
+            target=body.domain.strip(),
+            location=body.location,
+            language=body.language,
+            max_competitors=MAX_COMPETITORS,
+            max_keywords_per_competitor=MAX_KEYWORDS_PER_COMPETITOR,
+        )
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    except BraveSearchError as exc:
+        raise HTTPException(502, str(exc)) from exc
+    except (HttpError, GoogleAPICallError, TimeoutError, RetryError,
+            ConnectionError, socket.gaierror, HttpLib2Error, TransportError) as exc:
+        # Only BraveCompetitorProvider's GSC read can raise these; DataForSEO never does.
+        raise _competitors_google_error(exc) from exc
+
     return {
         "domain": body.domain.strip(),
+        "source": source,
+        "notes": notes,
         "competitors": [
             {
                 "domain": c.domain,

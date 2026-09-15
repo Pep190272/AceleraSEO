@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     dataforseo_login: str = ""
     dataforseo_password: str = ""
     serpapi_key: str = ""
+    brave_api_key: str = ""
 
     # LLM (DECIDE narration). Falls back to NullLLM when no key is set.
     llm_provider: str = "anthropic"

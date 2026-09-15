@@ -54,6 +54,10 @@ SCHEMA: list[Field] = [
           "Optional — keyword volumes & difficulty (bring-your-own-key)."),
     Field("dataforseo_password", "DataForSEO password", "Market data", True,
           "Optional — paired with the login above."),
+    Field("brave_api_key", "Brave Search API key", "Market data", True,
+          "Optional, free — $5 in free credits every month (brave.com/search/api). "
+          "Used for competitor discovery from your own Search Console queries when "
+          "DataForSEO is not configured; requires Google Search Console connected."),
     Field("indexnow_key", "IndexNow key", "Indexing", True,
           "Optional — instant indexing on Bing/Yandex (not Google)."),
     Field("indexnow_key_location", "IndexNow key URL", "Indexing", False,

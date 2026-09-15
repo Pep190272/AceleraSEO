@@ -97,7 +97,44 @@ Exactly two endpoints degrade, both with a clear message rather than an error:
 | Endpoint | Without payment | Where |
 |---|---|---|
 | `POST /strategy/discover` | `422` — needs an LLM key | `interfaces/api/app.py:174-179` |
-| `POST /competitors/analyze` | `503` — needs DataForSEO credentials | `interfaces/api/app.py:398-402` |
+| `POST /competitors/analyze` | `503` — needs DataForSEO credentials, or the free Brave option below | `interfaces/api/app.py:555-560` |
+
+### Free competitors option: Brave Search + your own GSC queries
+
+Added 2026-09-15. No free, ToS-clean source of REAL Google rankings exists:
+SerpApi/SearXNG scrape Google (excluded), Google Custom Search JSON API is
+closed to new customers (shutdown 2027-01-01), Bing Web Search API was retired
+2025-08-11. Instead, `infrastructure/providers/brave_competitors.py` builds
+**"GSC queries x Brave Search"**, using the Google Search Console the engine
+already connects.
+
+- **Source:** [Brave Search API](https://brave.com/search/api/), checked
+  2026-09-15 — **$5 in free credits every month** at $5 per 1,000 requests
+  (~1,000 queries/month; this adapter budgets 10 calls/analysis -> ~100
+  analyses/month inside the free credit).
+- **How it works:** the target's own top 10 Search Console queries by
+  impressions (last 90 days) seed one Brave Web Search call each
+  (`count=20`); results are aggregated per competitor domain
+  (`common_keywords`, `avg_position`). Only the user's own verified GSC
+  property can be analysed this way — a different target gets a `422`.
+- **Data-quality caveat:** positions are Brave's index, not Google's;
+  keywords are limited to the target's own top queries; `organic_traffic`
+  and `search_volume` are always `0` (GSC impressions are not a defensible
+  stand-in for a competitor's traffic/volume). The API response says so via
+  `source: "brave+gsc"` and a `notes` field.
+- **No storage, no Google scraping (ToS):** Brave forbids storing results
+  without a storage-rights plan (brave.com/search/api/, checked 2026-09-15):
+  *"If you would like to store the API results in part or whole (for example,
+  to train or tune an LLM), you will need to subscribe to a plan that
+  explicitly grants storage rights."* This adapter keeps results in local
+  variables only, for one request — nothing is written to disk, a database,
+  or a log; logs carry only HTTP status codes/counts, never result
+  URLs/snippets or the API key. `/competitors/analyze` persists nothing
+  either way (matches the existing DataForSEO path). Brave Search is Brave's
+  own index — this never scrapes Google.
+- **Config:** `BRAVE_API_KEY` (Settings tab -> Market data), placeholder-aware
+  via `infrastructure/llm/factory._is_real_key` like every other
+  bring-your-own key here.
 
 ### The hidden cost
 
