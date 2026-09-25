@@ -32,15 +32,17 @@ We did the research so you don't chase impossible promises:
 ## What it actually does
 
 **Reach** says how you use it today: **UI** = a tab in the dashboard; **API** = implemented,
-tested and exposed over HTTP, but with no screen yet. Giving the API-only rows a UI is
-slices 1–5 of [docs/PLAN.md](./docs/PLAN.md).
+tested and exposed over HTTP, but with no screen yet; **UI (collect)** = you can connect
+Google and run the collection from the **Settings** tab, but the collected data has no
+screen yet. Giving the remaining rows a UI is slices 3–5 of [docs/PLAN.md](./docs/PLAN.md)
+(slices 1–2, connect Google and run SENSE from the UI, are done).
 
 | Layer | Capability | Data source | Reach |
 |-------|-----------|-------------|-------|
-| **SENSE** | Real ranking, clicks, impressions, position, CTR (16 months) | Google Search Console API | API |
-| **SENSE** | Traffic, conversions, revenue per landing page | GA4 Data API | API |
+| **SENSE** | Real ranking, clicks, impressions, position, CTR (16 months) | Google Search Console API | **UI (collect)** |
+| **SENSE** | Traffic, conversions, revenue per landing page | GA4 Data API | **UI (collect)** |
 | **SENSE** | Technical audit (schema presence, meta, headings, canonicals, broken links, thin content) | Built-in local crawler | **UI** |
-| **SENSE** | Market: volumes, difficulty, competitors | DataForSEO (your key) | **UI** |
+| **SENSE** | Market: volumes, difficulty, competitors | DataForSEO (your key); for competitors only, also the free Brave Search API × your own GSC queries | **UI** |
 | **DECIDE** | Business classification + winnable-keyword strategy | LLM reasoning over the above | **UI** |
 | **ACT** | Instant indexing on Bing/Yandex/Naver/Seznam/Yep | IndexNow protocol | API |
 | **ACT** | Index status per URL, on demand | URL Inspection API (read) | API |
@@ -97,8 +99,29 @@ docker compose -f docker-compose.demo.yml up --build
 ```
 
 Open http://localhost:3000, go to **Strategy**, paste a few keywords, and you get a
-prioritised plan. Add your own API keys later from the **Settings** tab — no file editing.
-Stop it with `docker compose down` (or `docker compose -f docker-compose.demo.yml down`).
+prioritised plan. Stop it with `docker compose down` (or `docker compose -f docker-compose.demo.yml down`).
+
+This stack is the **shared-demo** configuration (`DEMO_MODE=true` in
+`docker-compose.demo.yml`): it runs keyless, the **Settings** tab is read-only, and
+connecting Google or running a SENSE collection is refused. Only `ENGINE_API_TOKEN` is read
+from `.env`; no other key reaches the engine.
+
+### Your own instance, with the dashboard
+
+To use your own keys and Google account, run the engine from `docker-compose.yml` (it reads
+`.env`) and the dashboard with Node.js 22:
+
+```bash
+docker compose up -d                                   # engine → http://localhost:8000
+cd apps/dashboard
+npm install
+# the dashboard needs the same token as the engine (ENGINE_URL defaults to http://localhost:8000)
+echo "ENGINE_API_TOKEN=<the value in ../../.env>" > .env.local
+npm run dev                                            # dashboard → http://localhost:3000
+```
+
+Then add your API keys from the **Settings** tab — no file editing — and connect Google
+from there.
 
 What each optional key buys you, and what still works without it:
 [docs/API-LIMITS.md](./docs/API-LIMITS.md).
@@ -106,8 +129,9 @@ What each optional key buys you, and what still works without it:
 ## Status
 
 **In active development.** The engine implements the full Sense → Decide → Act → Learn
-loop; the dashboard currently exposes Decide and the technical audit, and the other three
-stages are reachable over the API while their screens are built.
+loop; the dashboard currently exposes Decide (Strategy), competitor analysis, the technical
+audit, and connecting Google plus running a SENSE collection (Settings). Viewing the
+collected data, ACT and LEARN are reachable over the API while their screens are built.
 
 - Honest, per-milestone status: [docs/ROADMAP.md](./docs/ROADMAP.md)
 - What gets built next, and in what order: [docs/PLAN.md](./docs/PLAN.md)
