@@ -16,7 +16,7 @@ dependencies = [
     "google-auth-oauthlib>=1.2",
     "google-analytics-data>=0.18",
     "httpx>=0.27",
-    "selectolax>=0.3.21",
+    "selectolax>=0.3.21,<1.0",  # 1.0 removed the Modest backend crawler.py imports
     "anthropic>=0.40",
 ]
 
