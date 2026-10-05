@@ -4,14 +4,15 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, sessionmaker
 
-from ...domain.models import RankingSignal
+from ...domain.models import QueryRanking, RankingSignal
 from .models import RankingSignalRow
 
 
 class RankingRepository:
-    def __init__(self, session_factory):
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
     def save_many(self, site_url: str, signals: list[RankingSignal]) -> int:
@@ -63,3 +64,58 @@ class RankingRepository:
                 )
                 for r in rows
             ]
+
+    def observed_range(self, site_url: str) -> tuple[date | None, date | None]:
+        """First and last day with persisted signals for the site, or (None, None)."""
+        with self._session_factory() as session:
+            first, last = session.execute(
+                select(
+                    func.min(RankingSignalRow.observed_on),
+                    func.max(RankingSignalRow.observed_on),
+                ).where(RankingSignalRow.site_url == site_url)
+            ).one()
+            return first, last
+
+    def summarize_by_query(
+        self, site_url: str, start: date, end: date, limit: int | None = None
+    ) -> list[QueryRanking]:
+        """Aggregate [start, end] per query, most clicks first.
+
+        Position is weighted by impressions, so a page seen once at position 90
+        does not outweigh one seen a thousand times at position 3.
+        """
+        clicks = func.sum(RankingSignalRow.clicks)
+        impressions = func.sum(RankingSignalRow.impressions)
+        stmt = (
+            select(
+                RankingSignalRow.query,
+                clicks,
+                impressions,
+                func.sum(RankingSignalRow.position * RankingSignalRow.impressions),
+                func.avg(RankingSignalRow.position),
+            )
+            .where(
+                RankingSignalRow.site_url == site_url,
+                RankingSignalRow.observed_on >= start,
+                RankingSignalRow.observed_on <= end,
+            )
+            .group_by(RankingSignalRow.query)
+            .order_by(clicks.desc(), impressions.desc(), RankingSignalRow.query)
+        )
+        if limit is not None:
+            stmt = stmt.limit(limit)
+        with self._session_factory() as session:
+            rows = session.execute(stmt).all()
+        result: list[QueryRanking] = []
+        for query, total_clicks, total_impressions, weighted, plain_avg in rows:
+            total_impressions = int(total_impressions or 0)
+            position = (
+                float(weighted) / total_impressions if total_impressions else float(plain_avg)
+            )
+            result.append(QueryRanking(
+                query=query,
+                clicks=int(total_clicks or 0),
+                impressions=total_impressions,
+                position=position,
+            ))
+        return result
