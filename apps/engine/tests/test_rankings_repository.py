@@ -37,6 +37,21 @@ def test_summarize_aggregates_per_query_with_weighted_position(tmp_path):
     assert repo.summarize_by_query(SITE, date(2026, 9, 1), date(2026, 9, 30), 1) == [ads]
 
 
+def test_min_impressions_filters_on_summed_impressions_before_limit(tmp_path):
+    repo = _repo(tmp_path)
+    repo.save_many(SITE, [
+        _sig("thin", "/", 1.0, 50, 4, date(2026, 9, 1)),     # most clicks, too few impressions
+        _sig("split", "/a", 3.0, 2, 6, date(2026, 9, 1)),    # 6 + 6 = 12 across two rows
+        _sig("split", "/b", 3.0, 2, 6, date(2026, 9, 2)),
+        _sig("wide", "/", 5.0, 1, 500, date(2026, 9, 1)),
+    ])
+    window = (SITE, date(2026, 9, 1), date(2026, 9, 30))
+
+    assert [r.query for r in repo.summarize_by_query(*window, 1, 10)] == ["split"]
+    assert [r.query for r in repo.summarize_by_query(*window, None, 10)] == ["split", "wide"]
+    assert [r.query for r in repo.summarize_by_query(*window, 1, 0)] == ["thin"]
+
+
 def test_observed_range(tmp_path):
     repo = _repo(tmp_path)
     assert repo.observed_range(SITE) == (None, None)

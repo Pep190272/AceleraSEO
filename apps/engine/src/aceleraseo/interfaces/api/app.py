@@ -298,8 +298,12 @@ def _search_console_today(now: datetime | None = None) -> date:
 def sense_rankings(
     days: int = Query(28, ge=1, le=240),
     limit: int = Query(50, ge=1, le=500),
+    min_impressions: int = Query(10, ge=0, le=10000),
 ) -> dict:
     """What ranks and what is slipping, from the persisted Search Console rows.
+
+    Queries below ``min_impressions`` in the window are left out, and the delta is
+    null when the previous window is below it too: thin data swings wildly.
 
     Guarded by the token: it returns the client's search data.
     """
@@ -310,12 +314,13 @@ def sense_rankings(
         raise HTTPException(400, "GSC_SITE_URL not set in .env.")
     repo = RankingRepository(make_session_factory(settings.database_url))
     report = ReportRankings(repo).execute(
-        settings.gsc_site_url, _search_console_today(), days, limit
+        settings.gsc_site_url, _search_console_today(), days, limit, min_impressions
     )
     return {
         "site_url": report.site_url,
         "window": {"start": report.start.isoformat(), "end": report.end.isoformat(),
                    "days": report.days},
+        "min_impressions": report.min_impressions,
         "first_observed_on": report.first_observed_on.isoformat()
         if report.first_observed_on else None,
         "last_observed_on": report.last_observed_on.isoformat()

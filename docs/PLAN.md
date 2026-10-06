@@ -206,7 +206,11 @@ built, and it is the first screen that justifies connecting Google at all.
   (token-guarded) plus a dashboard build + typecheck CI job (#34). UI on
   `feat/slice-3-sense-view-ui`: a **Rankings** tab (7/28/90-day window; query, clicks,
   impressions, position, Δ) behind `/api/sense/rankings`, which forwards only validated
-  `days`/`limit`. Real-data check on the running stack is pending. "What's converting" is
+  `days`/`limit`/`min_impressions`. Real-data check on the running stack is pending.
+  Follow-up: a **minimum-impressions** filter (`min_impressions`, default 10; the tab
+  offers 0/10/50/100) drops thin queries in SQL before the limit and withholds the delta
+  when the previous window is below the threshold, because a handful of impressions made
+  deltas like −79.5 meaningless. "What's converting" is
   out: GA4 conversions are not persisted yet, and the tab says so.
 - **Known limits:** the window ends at the last collected day; the previous window is
   compared even when it is only partly collected, so early deltas can mislead; `GROUP BY`
