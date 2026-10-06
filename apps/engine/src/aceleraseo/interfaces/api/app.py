@@ -28,11 +28,13 @@ from ...infrastructure.persistence.repository import RankingRepository
 from ...infrastructure.providers.crawler import HttpxCrawler
 from ...infrastructure.providers.url_safety import UnsafeURLError, ensure_public_url
 from .guards import require_token, require_write_access, warn_if_token_missing
+from .log_redaction import install_access_log_redaction
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="AceleraSEO — Engine", version="0.1.0")
 warn_if_token_missing()
+install_access_log_redaction()
 
 # Endpoints that change state (settings, the database, a managed site, or an
 # external index) must declare this. See guards.py.
@@ -154,10 +156,10 @@ def google_callback(
         oauth.exchange_code(get_settings(), code, state)
     except oauth.InvalidStateError:
         return _back_to_settings("error", "state")
-    except Exception:
-        # Token endpoint rejection, network failure or scope mismatch. Logged with
-        # the traceback; the user gets a readable message and can retry.
-        logger.exception("Google OAuth code exchange failed.")
+    except Exception as exc:
+        # Token endpoint rejection, network failure or scope mismatch. Only the type
+        # is logged: a traceback could carry the one-time code. The user can retry.
+        logger.error("Google OAuth code exchange failed (%s).", type(exc).__name__)
         return _back_to_settings("error", "exchange")
     return _back_to_settings("connected")
 

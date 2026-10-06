@@ -70,6 +70,8 @@ It ranks keywords not by raw volume but by **`intent × volume ÷ difficulty`** 
 
 An agent rewriting a live business site unsupervised is a liability. AceleraSEO defaults to **`AUTONOMY_MODE=none`** — it *proposes*, you *approve*. Higher autonomy levels are opt-in with hard daily caps.
 
+Logs stay free of secrets: the engine redacts `code`, `state` and any token/key/secret-like query values from uvicorn's access log (e.g. the Google OAuth callback shows `code=[redacted]`), and OAuth exchange failures log only the error type.
+
 ## Architecture
 
 Hexagonal (ports & adapters). See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md).
