@@ -279,6 +279,8 @@ def sense_run(days: int = Query(90, ge=1, le=480)) -> dict:
         # False means conversions were skipped, not that there were zero —
         # CollectSignals.execute() only calls GA4 when a property id is set.
         "ga4_configured": bool(settings.ga4_property_id),
+        # 0 with GA4 configured means the property received no data (no Google tag?).
+        "ga4_rows": result.ga4_rows,
     }
 
 

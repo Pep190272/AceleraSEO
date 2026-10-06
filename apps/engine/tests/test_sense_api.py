@@ -172,6 +172,7 @@ def test_sense_run_success_reports_counts_and_ga4_configured(client, fake_provid
     assert body["rankings_fetched"] == 1
     assert body["rankings_new"] == 1
     assert body["ga4_configured"] is False  # ga4_property_id is "" in _settings()
+    assert body["ga4_rows"] == 0
 
 
 def test_sense_run_success_with_ga4_configured(client, tmp_path, monkeypatch, fake_providers):
@@ -183,6 +184,7 @@ def test_sense_run_success_with_ga4_configured(client, tmp_path, monkeypatch, fa
     body = res.json()
     assert body["ga4_configured"] is True
     assert body["pages_with_conversions"] == 1  # /p has 3.0 > 0
+    assert body["ga4_rows"] == 1
 
 
 def test_sense_run_rejects_an_out_of_range_days(client):

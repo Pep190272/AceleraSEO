@@ -1,4 +1,5 @@
 """SENSE use case tested with in-memory fakes — no live Google, no network."""
+import logging
 from datetime import date
 
 from aceleraseo.application.sense import CollectSignals
@@ -51,3 +52,39 @@ def test_no_conversions_when_property_missing():
     uc, _ = _use_case([_signal()])
     result = uc.execute(site_url="site", property_id="", days=30)
     assert result.pages_with_conversions == 0
+
+
+def test_collect_logs_ga4_totals_when_property_set(caplog):
+    uc, _ = _use_case([_signal()])
+    with caplog.at_level(logging.INFO, logger="aceleraseo.application.sense"):
+        uc.execute(site_url="site", property_id="123", days=30)
+    assert "GA4 returned 2 landing pages, 5 key events in total, 1 pages with > 0" in caplog.text
+    assert "no rows" not in caplog.text
+
+
+def test_collect_warns_when_ga4_returns_no_rows(caplog):
+    class EmptyAnalytics:
+        def fetch_conversions(self, property_id, days):
+            return {}
+
+    uc = CollectSignals(FakeRankings([_signal()]), EmptyAnalytics(),
+                        RankingRepository(make_session_factory("sqlite:///:memory:")))
+    with caplog.at_level(logging.INFO, logger="aceleraseo.application.sense"):
+        result = uc.execute(site_url="site", property_id="123", days=30)
+    assert result.ga4_rows == 0
+    warnings = [r for r in caplog.records if r.levelno == logging.WARNING]
+    assert len(warnings) == 1
+    assert "Google tag" in warnings[0].getMessage()
+
+
+def test_collect_skips_and_logs_ga4_without_property(caplog):
+    class ExplodingAnalytics:
+        def fetch_conversions(self, property_id, days):
+            raise AssertionError("GA4 must not be called without a property id")
+
+    uc = CollectSignals(FakeRankings([_signal()]), ExplodingAnalytics(),
+                        RankingRepository(make_session_factory("sqlite:///:memory:")))
+    with caplog.at_level(logging.INFO, logger="aceleraseo.application.sense"):
+        result = uc.execute(site_url="site", property_id="", days=30)
+    assert result.pages_with_conversions == 0
+    assert "GA4 skipped: no property id configured" in caplog.text
