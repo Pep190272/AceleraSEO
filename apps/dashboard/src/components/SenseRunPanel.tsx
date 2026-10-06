@@ -89,9 +89,15 @@ export default function SenseRunPanel({ demo, google, siteUrlSet }: Props) {
               <div className="l">{t("set.sense.conversions")}</div>
             </div>
           </div>
-          {!data.ga4_configured && <p className="hint">{t("set.sense.no_ga4")}</p>}
+          <p className="hint">
+            {t("set.sense.source")}: {t(`set.sense.source.${data.analytics_source}`)}
+          </p>
+          {data.analytics_source === "none" && <p className="hint">{t("set.sense.no_ga4")}</p>}
           {data.ga4_configured && data.ga4_rows === 0 && (
             <p className="hint">{t("set.sense.ga4_no_data")}</p>
+          )}
+          {data.analytics_source === "wordpress" && data.conversion_rows === 0 && (
+            <p className="hint">{t("set.sense.wp_no_data")}</p>
           )}
         </div>
       )}
