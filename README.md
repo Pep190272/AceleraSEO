@@ -34,12 +34,12 @@ We did the research so you don't chase impossible promises:
 **Reach** says how you use it today: **UI** = a tab in the dashboard; **API** = implemented,
 tested and exposed over HTTP, but with no screen yet; **UI (collect)** = you can connect
 Google and run the collection from the **Settings** tab, but the collected data has no
-screen yet (the engine already serves it, aggregated per query, at `GET /sense/rankings`). Giving the remaining rows a UI is slices 3–5 of [docs/PLAN.md](./docs/PLAN.md)
+screen yet. Search Console data is shown in the **Rankings** tab, aggregated per query. Giving the remaining rows a UI is slices 4–5 of [docs/PLAN.md](./docs/PLAN.md)
 (slices 1–2, connect Google and run SENSE from the UI, are done).
 
 | Layer | Capability | Data source | Reach |
 |-------|-----------|-------------|-------|
-| **SENSE** | Real ranking, clicks, impressions, position, CTR (16 months) | Google Search Console API | **UI (collect)** |
+| **SENSE** | Real ranking, clicks, impressions, position, CTR (16 months) | Google Search Console API | **UI** |
 | **SENSE** | Traffic, conversions, revenue per landing page | GA4 Data API | **UI (collect)** |
 | **SENSE** | Technical audit (schema presence, meta, headings, canonicals, broken links, thin content) | Built-in local crawler | **UI** |
 | **SENSE** | Market: volumes, difficulty, competitors | DataForSEO (your key); for competitors only, also the free Brave Search API × your own GSC queries | **UI** |
@@ -130,8 +130,9 @@ What each optional key buys you, and what still works without it:
 
 **In active development.** The engine implements the full Sense → Decide → Act → Learn
 loop; the dashboard currently exposes Decide (Strategy), competitor analysis, the technical
-audit, and connecting Google plus running a SENSE collection (Settings). Viewing the
-collected data, ACT and LEARN are reachable over the API while their screens are built.
+audit, connecting Google plus running a SENSE collection (Settings), and what ranks and
+what is slipping (Rankings). Conversions, ACT and LEARN are reachable over the API while
+their screens are built.
 
 - Honest, per-milestone status: [docs/ROADMAP.md](./docs/ROADMAP.md)
 - What gets built next, and in what order: [docs/PLAN.md](./docs/PLAN.md)

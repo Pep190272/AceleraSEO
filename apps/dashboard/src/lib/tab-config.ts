@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 
 import AuditTool from "@/components/AuditTool";
 import CompetitorTool from "@/components/CompetitorTool";
+import RankingsTool from "@/components/RankingsTool";
 import SettingsTool from "@/components/SettingsTool";
 import StrategyTool from "@/components/StrategyTool";
 
@@ -18,6 +19,7 @@ export const TAB_CONFIG = [
   { id: "strategy", labelKey: "nav.strategy", component: StrategyTool },
   { id: "competitors", labelKey: "nav.competitors", component: CompetitorTool },
   { id: "audit", labelKey: "nav.audit", component: AuditTool },
+  { id: "rankings", labelKey: "nav.rankings", component: RankingsTool },
   { id: "settings", labelKey: "nav.settings", component: SettingsTool },
 ] as const satisfies ReadonlyArray<TabEntry>;
 

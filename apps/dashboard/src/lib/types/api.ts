@@ -78,3 +78,24 @@ export type SenseResult = {
   pages_with_conversions: number;
   ga4_configured: boolean;
 };
+
+// ── RankingsTool (GET /sense/rankings) ───────────────────────
+
+export type RankingRow = {
+  query: string;
+  clicks: number;
+  impressions: number;
+  position: number;
+  previous_position: number | null;
+  // current − previous; positive means the query slipped. null = not in the
+  // previous window.
+  position_delta: number | null;
+};
+
+export type RankingsReport = {
+  site_url: string;
+  window: { start: string; end: string; days: number };
+  first_observed_on: string | null;
+  last_observed_on: string | null;
+  rows: RankingRow[];
+};
