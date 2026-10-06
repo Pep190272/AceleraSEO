@@ -34,7 +34,8 @@ We did the research so you don't chase impossible promises:
 **Reach** says how you use it today: **UI** = a tab in the dashboard; **API** = implemented,
 tested and exposed over HTTP, but with no screen yet; **UI (collect)** = you can connect
 Google and run the collection from the **Settings** tab, but the collected data has no
-screen yet. Search Console data is shown in the **Rankings** tab, aggregated per query. Giving the remaining rows a UI is slices 4–5 of [docs/PLAN.md](./docs/PLAN.md)
+screen yet. Search Console data is shown in the **Rankings** tab, aggregated per query (queries
+under a minimum-impressions threshold, 10 by default, are hidden). Giving the remaining rows a UI is slices 4–5 of [docs/PLAN.md](./docs/PLAN.md)
 (slices 1–2, connect Google and run SENSE from the UI, are done).
 
 | Layer | Capability | Data source | Reach |

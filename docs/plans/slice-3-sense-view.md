@@ -29,6 +29,7 @@ separate slice. The tab says so honestly instead of showing an empty column.
 | D5 | Read-back goes through a new method on `RankingRepository`, called by a small use case `ReportRankings` in `application/report.py` | PLAN §3 "ports worth adding #1"; keeps `app.py` thin. |
 | D6 | New tab `rankings`, a Client Component using `useApiCall` + `apiFetch` | Matches every existing tab. A Server Component tab would be the only one of its kind. |
 | D7 | Close the dashboard verification gap with a CI job, not ESLint | ESLint config is slice T, and `next lint` without config opens an interactive wizard. |
+| D8 | (Follow-up) `min_impressions: Query(10, ge=0, le=10000)`: queries below it in the current window are dropped via `HAVING` before `LIMIT`; each row carries `previous_impressions`, and `position_delta` is `null` when that is below the threshold. The tab offers 0/10/50/100 | Queries with a handful of impressions showed deltas like −79.5. `0` restores the unfiltered view. |
 
 ## Steps (each one is a work-unit commit)
 
@@ -56,9 +57,11 @@ separate slice. The tab says so honestly instead of showing an empty column.
 
   ```json
   {"site_url": "...", "window": {"start": "...", "end": "...", "days": 28},
+   "min_impressions": 10,
    "first_observed_on": "...", "last_observed_on": "...",
    "rows": [{"query": "...", "clicks": 0, "impressions": 0, "position": 0.0,
-             "previous_position": null, "position_delta": null}]}
+             "previous_position": null, "previous_impressions": 0,
+             "position_delta": null}]}
   ```
 
 ### 3. `test(engine)`
