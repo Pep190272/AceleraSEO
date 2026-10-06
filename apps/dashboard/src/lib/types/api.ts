@@ -79,6 +79,10 @@ export type SenseResult = {
   ga4_configured: boolean;
   /** Rows GA4 returned. 0 while configured means the property received no data. */
   ga4_rows: number;
+  /** Where conversions came from; "none" means they were skipped. */
+  analytics_source: "none" | "ga4" | "wordpress";
+  /** Rows the active source returned, whichever it is. */
+  conversion_rows: number;
 };
 
 // ── RankingsTool (GET /sense/rankings) ───────────────────────

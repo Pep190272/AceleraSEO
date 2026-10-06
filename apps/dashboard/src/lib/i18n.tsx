@@ -222,9 +222,15 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "set.sense.rankings_new": "filas nuevas",
       "set.sense.conversions": "páginas con conversiones",
       "set.sense.no_ga4":
-        "No se recolectaron conversiones: falta el ID de propiedad de GA4 en Ajustes.",
+        "No se recolectaron conversiones: no hay fuente de conversiones (GA4 o WordPress) en Ajustes.",
       "set.sense.ga4_no_data":
         "GA4 recibió 0 datos en este periodo: comprueba que la etiqueta de Google está instalada en tu web.",
+      "set.sense.source": "Fuente de conversiones",
+      "set.sense.source.ga4": "GA4",
+      "set.sense.source.wordpress": "WordPress (propia, sin cookies)",
+      "set.sense.source.none": "ninguna",
+      "set.sense.wp_no_data":
+        "WordPress devolvió 0 filas en este periodo: comprueba que el endpoint registra las conversiones.",
     },
     // Spanish settings field labels and hints, keyed by the engine's field key and
     // group. The engine's English text is the source; English shows it unchanged.
@@ -270,6 +276,15 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
         "URL base del sitio Noor que vas a gestionar, por ejemplo https://example.com.",
       "set.field.noor_api_key.label": "Clave API de Noor",
       "set.field.noor_api_key.hint": "Clave X-API-Key para autenticarse en la API SEO de Noor.",
+      "set.group.conversions": "Conversiones",
+      "set.field.conversions_source.label": "Fuente de conversiones",
+      "set.field.conversions_source.hint":
+        "none · ga4 · wordpress. Vacío = ga4 si hay ID de propiedad de GA4; si no, none.",
+      "set.field.wp_conversions_url.label": "Endpoint de conversiones de WordPress",
+      "set.field.wp_conversions_url.hint":
+        "URL completa del endpoint de conversiones de tu web (propio, sin cookies).",
+      "set.field.wp_conversions_key.label": "Clave de conversiones de WordPress",
+      "set.field.wp_conversions_key.hint": "Clave X-API-Key que espera el endpoint de conversiones.",
     },
     common: {
       "common.error": "Error",
@@ -466,9 +481,16 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "set.sense.rankings_fetched": "rankings fetched",
       "set.sense.rankings_new": "new rows",
       "set.sense.conversions": "pages with conversions",
-      "set.sense.no_ga4": "No conversions were collected: the GA4 property ID is missing in Settings.",
+      "set.sense.no_ga4":
+        "No conversions were collected: no conversions source (GA4 or WordPress) is set in Settings.",
       "set.sense.ga4_no_data":
         "GA4 received no data in this period: check that the Google tag is installed on your site.",
+      "set.sense.source": "Conversions source",
+      "set.sense.source.ga4": "GA4",
+      "set.sense.source.wordpress": "WordPress (first-party, no cookies)",
+      "set.sense.source.none": "none",
+      "set.sense.wp_no_data":
+        "WordPress returned no rows in this period: check that the endpoint records conversions.",
     },
     // Empty on purpose: English shows the engine's own field text (see SettingsTool).
     setFields: {},
