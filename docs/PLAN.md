@@ -210,8 +210,9 @@ built, and it is the first screen that justifies connecting Google at all.
   Follow-up: a **minimum-impressions** filter (`min_impressions`, default 10; the tab
   offers 0/10/50/100) drops thin queries in SQL before the limit and withholds the delta
   when the previous window is below the threshold, because a handful of impressions made
-  deltas like −79.5 meaningless. "What's converting" is
-  out: GA4 conversions are not persisted yet, and the tab says so.
+  deltas like −79.5 meaningless. "What's converting" followed in
+  [first-party-conversions](./plans/first-party-conversions.md) PR B: a conversions column
+  with each query's top-page conversions from the latest collection.
 - **Known limits:** the window ends at the last collected day; the previous window is
   compared even when it is only partly collected, so early deltas can mislead; `GROUP BY`
   on the 2,048-char `query` column has no index (fine at ~5k rows).
