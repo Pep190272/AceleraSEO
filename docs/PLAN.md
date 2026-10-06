@@ -89,15 +89,13 @@ What is missing is the last hop:
 
 | Stage | Engine | Dashboard |
 |---|---|---|
-| SENSE | ✅ `/sense/run`, `/auth/google/*`, `/sense/rankings` | ❌ nothing — no OAuth button exists |
+| SENSE | ✅ `/sense/run`, `/auth/google/*`, `/sense/rankings` | ✅ Settings (Connect Google, Run collection) + Rankings tab |
 | DECIDE | ✅ `/strategy/preview`, `/strategy/discover` | ✅ Strategy tab |
 | ACT | ✅ `/act/indexnow`, `/act/index-status`, `/act/proposals` | ❌ nothing |
 | LEARN | ✅ `/learn/outcome` | ❌ nothing |
 
-Nine of twenty engine endpoints are reachable by clicking. The Settings tab collects
-`gsc_site_url`, `ga4_property_id`, `google_oauth_client_id` and
-`google_oauth_client_secret` — four fields that currently lead nowhere, because nothing in
-the UI ever starts the consent flow or triggers a collection run.
+Thirteen of twenty-two engine endpoints are reachable by clicking (`/health` also feeds
+the header status badge). The eight left are `/cms/*`, `/act/*` and `/learn/outcome`.
 
 **A read endpoint over the collected time series.** Done in slice 3:
 `GET /sense/rankings` serves the persisted series back, aggregated per query.
@@ -204,11 +202,12 @@ built, and it is the first screen that justifies connecting Google at all.
   persisted series (persistence already exists).
 - **Verify:** the tab shows real queries, positions and clicks.
 - **Free.**
-- **Status:** engine half done on `feat/slice-3-sense-view`
-  ([plan](./plans/slice-3-sense-view.md)): `GET /sense/rankings` (token-guarded) plus a
-  dashboard build + typecheck CI job. The Rankings tab is stacked on
-  `feat/slice-3-sense-view-ui`. "What's converting" is out: GA4 conversions are not
-  persisted yet.
+- **Status:** done ([plan](./plans/slice-3-sense-view.md)). Engine: `GET /sense/rankings`
+  (token-guarded) plus a dashboard build + typecheck CI job (#34). UI on
+  `feat/slice-3-sense-view-ui`: a **Rankings** tab (7/28/90-day window; query, clicks,
+  impressions, position, Δ) behind `/api/sense/rankings`, which forwards only validated
+  `days`/`limit`. Real-data check on the running stack is pending. "What's converting" is
+  out: GA4 conversions are not persisted yet, and the tab says so.
 - **Known limits:** the window ends at the last collected day; the previous window is
   compared even when it is only partly collected, so early deltas can mislead; `GROUP BY`
   on the 2,048-char `query` column has no index (fine at ~5k rows).
