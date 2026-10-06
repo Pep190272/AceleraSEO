@@ -41,7 +41,7 @@ under a minimum-impressions threshold, 10 by default, are hidden). Giving the re
 | Layer | Capability | Data source | Reach |
 |-------|-----------|-------------|-------|
 | **SENSE** | Real ranking, clicks, impressions, position, CTR (16 months) | Google Search Console API | **UI** |
-| **SENSE** | Traffic, conversions, revenue per landing page | GA4 Data API | **UI (collect)** |
+| **SENSE** | Traffic, conversions (GA4 key events), revenue per landing page | GA4 Data API | **UI (collect)** |
 | **SENSE** | Technical audit (schema presence, meta, headings, canonicals, broken links, thin content) | Built-in local crawler | **UI** |
 | **SENSE** | Market: volumes, difficulty, competitors | DataForSEO (your key); for competitors only, also the free Brave Search API × your own GSC queries | **UI** |
 | **DECIDE** | Business classification + winnable-keyword strategy | LLM reasoning over the above | **UI** |

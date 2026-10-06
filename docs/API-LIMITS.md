@@ -49,8 +49,15 @@ Every constraint here was verified against primary/authoritative sources in May 
 | API | Gives us | Cost |
 |-----|----------|------|
 | **GSC Search Analytics API** | 16 months: clicks, impressions, position, CTR by query/page | Free |
-| **GA4 Data API** | sessions, conversions, revenue per landing page | Free |
+| **GA4 Data API** | sessions, key events, revenue per landing page | Free |
 | **URL Inspection API** | index status per URL | Free (2k/day) |
+
+GA4 deprecated the `conversions` metric name on 2024-05-06 in favour of `keyEvents`.
+The old name is still an alias (requesting both fails with "duplicate metrics"), so
+the values are identical. SENSE requests `keyEvents` (counted as "conversions" inside
+AceleraSEO) with a 30 s timeout per `runReport` call. A report with **zero rows** means
+GA4 is receiving no data at all, usually because the Google tag (`gtag.js` / GTM) is not
+installed on the site; SENSE logs a warning and returns `ga4_rows: 0`.
 
 → **Design decision:** The closed feedback loop (LEARN) is built entirely on free, official, read APIs. This is where AceleraSEO beats Ahrefs — Ahrefs never touches your GSC/GA4.
 

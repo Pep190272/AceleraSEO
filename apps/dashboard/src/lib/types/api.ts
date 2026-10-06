@@ -77,6 +77,8 @@ export type SenseResult = {
   rankings_new: number;
   pages_with_conversions: number;
   ga4_configured: boolean;
+  /** Rows GA4 returned. 0 while configured means the property received no data. */
+  ga4_rows: number;
 };
 
 // ── RankingsTool (GET /sense/rankings) ───────────────────────

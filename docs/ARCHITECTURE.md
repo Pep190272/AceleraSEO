@@ -101,7 +101,7 @@ Every action is logged with before/after + the reasoning that produced it → re
 ## 6. Data flow per cycle
 
 1. **Scheduler** triggers `sense.collect_signals(site)`.
-2. Adapters pull GSC (rankings), GA4 (conversions), crawler (tech), market APIs (volumes/SERP).
+2. Adapters pull GSC (rankings), GA4 (conversions, read as the `keyEvents` metric), crawler (tech), market APIs (volumes/SERP).
 3. Signals persisted as time-series → enables LEARN deltas.
 4. `decide.build_strategy()` → `BusinessProfile` + scored `ActionPlan` via LLM.
 5. `act.execute_plan()` → respects `AUTONOMY_MODE`. IndexNow on new URLs. Queue proposals.
