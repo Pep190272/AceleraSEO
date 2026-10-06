@@ -11,15 +11,26 @@ is fixed in docs/plans/first-party-conversions.md:
 """
 from __future__ import annotations
 
+import logging
 from datetime import date
 
 import httpx
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, ValidationError, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictInt,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 from ...domain.models import ConversionCount, ConversionSnapshot
-from ...domain.paths import normalize_path
+from ...domain.paths import MAX_SOURCE_PATH_LENGTH, is_plausible_path, normalize_path
 
 __all__ = ["WordPressConversionsError", "WordPressConversionsProvider", "normalize_path"]
+
+logger = logging.getLogger(__name__)
 
 WP_CONVERSIONS_TIMEOUT_SECONDS = 30.0
 
@@ -36,11 +47,19 @@ class WordPressConversionsError(Exception):
 
 
 class ConversionRow(BaseModel):
-    # Bounded by the conversion_signals columns, so a long value is a 502, not a DB error.
-    path: str = Field(max_length=2048)
+    # Untrusted text: anyone can make the site record a conversion on a made-up path.
+    path: str = Field(max_length=MAX_SOURCE_PATH_LENGTH)
+    # Bounded by the conversion_signals column, so a long value is a 502, not a DB error.
     type: str = Field(min_length=1, max_length=64)
     # Strict: JSON true or "2" is outside the contract, not a count.
     count: StrictInt = Field(ge=0)
+
+    @field_validator("path")
+    @classmethod
+    def _path_is_plausible(cls, value: str) -> str:
+        if not is_plausible_path(value):
+            raise ValueError("path is not a plausible site-relative path")
+        return value
 
 
 class ConversionsResponse(BaseModel):
@@ -49,13 +68,24 @@ class ConversionsResponse(BaseModel):
     from_: date = Field(alias="from")
     to: date
     rows: list[ConversionRow]
+    # Rows dropped for an implausible path. Set by the validator, never read from the body.
+    dropped_rows: int = Field(default=0, exclude=True)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_implausible_paths(cls, data: object) -> object:
+        """Drop rows whose path is implausible instead of failing the whole collection."""
+        if not isinstance(data, dict) or not isinstance(data.get("rows"), list):
+            return data
+        rows = data["rows"]
+        kept = [r for r in rows if not isinstance(r, dict) or is_plausible_path(r.get("path"))]
+        return {**data, "rows": kept, "dropped_rows": len(rows) - len(kept)}
 
     @model_validator(mode="after")
     def _window_is_ordered(self) -> ConversionsResponse:
         if self.to < self.from_:
             raise ValueError("'to' is before 'from'")
         return self
-
 
 
 class WordPressConversionsProvider:
@@ -87,6 +117,11 @@ class WordPressConversionsProvider:
         '/a' and '/a/' normalise to one path, so their counts are merged per type.
         """
         body = self._get(days)
+        if body.dropped_rows:
+            logger.warning(
+                "Dropped %d WordPress conversion rows with an implausible path.",
+                body.dropped_rows,
+            )
         counts: dict[tuple[str, str], int] = {}
         for row in body.rows:
             key = (normalize_path(row.path), row.type)

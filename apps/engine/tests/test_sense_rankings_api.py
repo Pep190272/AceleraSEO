@@ -102,6 +102,15 @@ def test_rows_carry_the_conversions_of_the_top_page(setup):
         "start": (last - timedelta(days=89)).isoformat(), "end": last.isoformat(), "days": 90}
 
 
+def test_paths_absent_from_search_console_never_surface(setup):
+    settings = setup(conversions_source="wordpress")
+    last = date.today() - timedelta(days=3)
+    _seed_conversions(settings, last, [ConversionCount("/made-up-path/", "form", 99)])
+    resp = TestClient(app_module.app).get("/sense/rankings?days=7", headers=TOKEN)
+    assert {r["conversions"] for r in resp.json()["rows"]} == {0}
+    assert "made-up-path" not in resp.text and "99" not in resp.text
+
+
 def test_conversions_are_hidden_when_the_source_is_none(setup):
     settings = setup()
     last = date.today() - timedelta(days=3)

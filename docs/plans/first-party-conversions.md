@@ -113,4 +113,5 @@ Decisions taken in PR B:
 |---|---|
 | The site's security plugins block unauthenticated REST routes | The route authenticates with its own key; confirm on LocalWP first |
 | Page cache serves a stale JSON | The endpoint sends `Cache-Control: no-store`; the plugin side must exclude the route from caching |
+| Anyone can make the site record a conversion on a made-up path (no rate limit by design) | Paths are untrusted text: rows with an implausible path (over 255 characters, no leading `/`, whitespace, control characters or backslashes) are dropped and counted in the log; the Rankings join attributes conversions only to pages Search Console reports, so a made-up path is stored but never shown, and the dashboard never renders a path as HTML or a link |
 | Low volume makes the column look broken | A real zero is shown as `0` with a source label, never as an empty cell |

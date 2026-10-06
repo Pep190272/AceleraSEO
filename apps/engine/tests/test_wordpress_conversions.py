@@ -60,6 +60,18 @@ def test_http_errors_become_a_typed_error(status, expected, fragment):
     assert fragment in str(err.value)
 
 
+def test_rows_with_an_implausible_path_are_dropped_and_counted(caplog):
+    bad_paths = ["landing/", "//evil.test/x","/a b/", "/a\\b/", "/a%0Ab/", "/tab\t", "/" + "x" * 255, 5, None]
+    body = {"from": "2026-07-08", "to": "2026-10-06", "rows": [
+        {"path": "/ok/", "type": "form", "count": 1},
+        *({"path": p, "type": "form", "count": 7} for p in bad_paths)]}
+    provider = _provider(lambda request: httpx.Response(200, json=body))
+    with caplog.at_level("WARNING"):
+        snapshot = provider.fetch_conversion_rows(90)
+    assert [(r.path, r.count) for r in snapshot.rows] == [("/ok/", 1)]
+    assert f"Dropped {len(bad_paths)} WordPress conversion rows" in caplog.text
+
+
 def test_redirects_are_not_followed_and_hint_the_final_url():
     calls: list[str] = []
 
