@@ -153,6 +153,12 @@ Left empty, it means `ga4` when a GA4 property ID is set and `none` otherwise, s
 installs keep working. The endpoint contract is in
 [docs/plans/first-party-conversions.md](./docs/plans/first-party-conversions.md).
 
+Each collection stores its counts per path and type in `conversion_signals` (GA4 totals as
+type `ga4_key_event`). `GET /sense/rankings` adds `conversions` to every row: the
+conversions of the query's top page (most clicks in the window) in the latest collection,
+or `null` when the source is `none` or nothing has been collected yet. Conversions belong
+to pages, not queries, so queries that land on the same page show the same count.
+
 - Honest, per-milestone status: [docs/ROADMAP.md](./docs/ROADMAP.md)
 - What gets built next, and in what order: [docs/PLAN.md](./docs/PLAN.md)
 

@@ -3,9 +3,12 @@ import logging
 from datetime import date
 
 from aceleraseo.application.sense import CollectSignals
-from aceleraseo.domain.models import RankingSignal
+from aceleraseo.domain.models import ConversionCount, ConversionSnapshot, RankingSignal
 from aceleraseo.infrastructure.persistence.db import make_session_factory
-from aceleraseo.infrastructure.persistence.repository import RankingRepository
+from aceleraseo.infrastructure.persistence.repository import (
+    ConversionRepository,
+    RankingRepository,
+)
 
 
 class FakeRankings:
@@ -79,3 +82,37 @@ def test_collect_skips_and_logs_without_a_conversions_source(caplog):
     assert result.pages_with_conversions == 0
     assert result.conversion_rows == 0
     assert "Conversions skipped: no conversions source configured" in caplog.text
+
+
+# ── Conversion persistence ──
+class RowsAnalytics:
+    def fetch_conversions(self, property_id, days):
+        raise AssertionError("the per-type rows are preferred")
+
+    def fetch_conversion_rows(self, days):
+        return ConversionSnapshot(date(2026, 5, 1), days, "wordpress", [
+            ConversionCount("/a/", "form", 2), ConversionCount("/a/", "whatsapp", 1)])
+
+
+def _collect(analytics, days=30, source="wordpress"):
+    factory = make_session_factory("sqlite:///:memory:")
+    uc = CollectSignals(FakeRankings([_signal()]), analytics, RankingRepository(factory),
+                        ConversionRepository(factory))
+    result = uc.execute(site_url="site", property_id="1", days=days, today=date(2026, 5, 2))
+    return result, ConversionRepository(factory).latest_snapshot("site", source)
+
+
+def test_collect_persists_per_type_rows_when_the_source_has_them():
+    result, snapshot = _collect(RowsAnalytics())
+    assert result.pages_with_conversions == 1 and result.conversion_rows == 1
+    assert snapshot is not None and snapshot.window_end == date(2026, 5, 1)
+    assert {(r.path, r.type, r.count) for r in snapshot.rows} == {
+        ("/a/", "form", 2), ("/a/", "whatsapp", 1)}
+
+
+def test_collect_persists_totals_only_sources_as_ga4_key_events():
+    _, snapshot = _collect(FakeAnalytics(), days=28, source="ga4")
+    assert snapshot is not None
+    assert (snapshot.window_end, snapshot.window_days) == (date(2026, 5, 2), 28)
+    assert {(r.path, r.type, r.count) for r in snapshot.rows} == {
+        ("/pricing/", "ga4_key_event", 5), ("/blog/x/", "ga4_key_event", 0)}

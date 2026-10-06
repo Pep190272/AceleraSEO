@@ -335,6 +335,16 @@ def test_sense_run_with_wordpress_but_no_key_is_400(client, tmp_path, monkeypatc
     assert "Conversions" in res.json()["detail"]
 
 
+def test_sense_run_with_ga4_but_no_property_id_is_400(client, tmp_path, monkeypatch,
+                                                      fake_providers):
+    settings = _settings(tmp_path, conversions_source="ga4")
+    monkeypatch.setattr(app_module, "get_settings", lambda: settings)
+    _write_token(settings, expired=False)
+    res = client.post("/sense/run")
+    assert res.status_code == 400
+    assert "GA4 property ID" in res.json()["detail"]
+
+
 def test_sense_run_reports_ga4_as_the_source(client, tmp_path, monkeypatch, fake_providers):
     settings = _settings(tmp_path, ga4_property_id="123")
     monkeypatch.setattr(app_module, "get_settings", lambda: settings)

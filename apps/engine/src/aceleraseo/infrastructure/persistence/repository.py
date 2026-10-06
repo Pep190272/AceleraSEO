@@ -4,11 +4,17 @@ from __future__ import annotations
 
 from datetime import date
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from ...domain.models import QueryRanking, RankingSignal
-from .models import RankingSignalRow
+from ...domain.models import ConversionCount, ConversionSnapshot, QueryRanking, RankingSignal
+from .models import ConversionSignalRow, RankingSignalRow
+
+# A collection that found no conversions is stored as this one zero row, so it still
+# supersedes the previous snapshot instead of leaving it on screen. Its empty path and
+# type cannot come from a source: the WordPress boundary only admits a plausible path
+# and a known type, and GA4 totals are stored as ga4_key_event on a normalised path.
+_EMPTY_MARKER = ConversionCount(path="", type="", count=0)
 
 
 class RankingRepository:
@@ -76,6 +82,33 @@ class RankingRepository:
             ).one()
             return first, last
 
+    def top_pages(
+        self, site_url: str, start: date, end: date, queries: list[str]
+    ) -> dict[str, str]:
+        """The page with most clicks (then impressions) per query in [start, end]."""
+        if not queries:
+            return {}
+        clicks = func.sum(RankingSignalRow.clicks)
+        impressions = func.sum(RankingSignalRow.impressions)
+        stmt = (
+            select(RankingSignalRow.query, RankingSignalRow.page)
+            .where(
+                RankingSignalRow.site_url == site_url,
+                RankingSignalRow.observed_on >= start,
+                RankingSignalRow.observed_on <= end,
+                RankingSignalRow.query.in_(queries),
+            )
+            .group_by(RankingSignalRow.query, RankingSignalRow.page)
+            .order_by(RankingSignalRow.query, clicks.desc(), impressions.desc(),
+                      RankingSignalRow.page)
+        )
+        with self._session_factory() as session:
+            rows = session.execute(stmt).all()
+        result: dict[str, str] = {}
+        for query, page in rows:
+            result.setdefault(query, page)
+        return result
+
     def summarize_by_query(
         self,
         site_url: str,
@@ -128,3 +161,66 @@ class RankingRepository:
                 position=position,
             ))
         return result
+
+
+class ConversionRepository:
+    """Conversion snapshots, one per (site, source, window end)."""
+
+    def __init__(self, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def save_snapshot(self, site_url: str, snapshot: ConversionSnapshot) -> int:
+        """Idempotent upsert: replace the site's rows for the snapshot's source and end.
+
+        Re-running a collection on the same day overwrites that day's counts in one
+        transaction, and a path that dropped out of the source does not linger.
+        Returns the number of conversion rows stored.
+        """
+        rows = snapshot.rows or [_EMPTY_MARKER]
+        with self._session_factory() as session:
+            session.execute(
+                delete(ConversionSignalRow).where(
+                    ConversionSignalRow.site_url == site_url,
+                    ConversionSignalRow.source == snapshot.source,
+                    ConversionSignalRow.window_end == snapshot.window_end,
+                )
+            )
+            session.add_all(
+                ConversionSignalRow(
+                    site_url=site_url, source=snapshot.source, path=row.path,
+                    type=row.type, window_end=snapshot.window_end,
+                    window_days=snapshot.window_days, count=row.count,
+                )
+                for row in rows
+            )
+            session.commit()
+        return len(snapshot.rows)
+
+    def latest_snapshot(self, site_url: str, source: str) -> ConversionSnapshot | None:
+        """The most recent collection of ``source`` for the site, or None if there is none.
+
+        Filtering by source keeps counts of a previous source off screen after a switch.
+        """
+        with self._session_factory() as session:
+            end = session.scalar(
+                select(func.max(ConversionSignalRow.window_end)).where(
+                    ConversionSignalRow.site_url == site_url,
+                    ConversionSignalRow.source == source,
+                )
+            )
+            if end is None:
+                return None
+            rows = session.scalars(
+                select(ConversionSignalRow).where(
+                    ConversionSignalRow.site_url == site_url,
+                    ConversionSignalRow.source == source,
+                    ConversionSignalRow.window_end == end,
+                )
+            ).all()
+        return ConversionSnapshot(
+            window_end=end,
+            window_days=max(r.window_days for r in rows),
+            source=source,
+            rows=[ConversionCount(r.path, r.type, r.count)
+                  for r in rows if r.type != _EMPTY_MARKER.type],
+        )

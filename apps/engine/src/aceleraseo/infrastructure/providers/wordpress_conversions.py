@@ -11,11 +11,28 @@ is fixed in docs/plans/first-party-conversions.md:
 """
 from __future__ import annotations
 
+import logging
+from collections.abc import Callable
 from datetime import date
-from urllib.parse import urlsplit
+from typing import Literal
 
 import httpx
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictInt,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
+
+from ...domain.models import ConversionCount, ConversionSnapshot
+from ...domain.paths import MAX_SOURCE_PATH_LENGTH, is_plausible_path, normalize_path
+
+__all__ = ["WordPressConversionsError", "WordPressConversionsProvider", "normalize_path"]
+
+logger = logging.getLogger(__name__)
 
 WP_CONVERSIONS_TIMEOUT_SECONDS = 30.0
 
@@ -31,10 +48,23 @@ class WordPressConversionsError(Exception):
         self.status_code = status_code
 
 
+# The conversion types the contract defines; rows of any other type are dropped.
+CONVERSION_TYPES = ("form", "whatsapp", "phone")
+
+
 class ConversionRow(BaseModel):
-    path: str
-    type: str
-    count: int = Field(ge=0)
+    # Untrusted text: anyone can make the site record a conversion on a made-up path.
+    path: str = Field(max_length=MAX_SOURCE_PATH_LENGTH)
+    type: Literal["form", "whatsapp", "phone"]
+    # Strict: JSON true or "2" is outside the contract, not a count.
+    count: StrictInt = Field(ge=0)
+
+    @field_validator("path")
+    @classmethod
+    def _path_is_plausible(cls, value: str) -> str:
+        if not is_plausible_path(value):
+            raise ValueError("path is not a plausible site-relative path")
+        return value
 
 
 class ConversionsResponse(BaseModel):
@@ -43,19 +73,29 @@ class ConversionsResponse(BaseModel):
     from_: date = Field(alias="from")
     to: date
     rows: list[ConversionRow]
+    # Rows dropped for an implausible path or an unknown type. Set by the validator,
+    # never read from the body.
+    dropped_rows: int = Field(default=0, exclude=True)
 
+    @model_validator(mode="before")
+    @classmethod
+    def _drop_untrusted_rows(cls, data: object) -> object:
+        """Drop rows with an implausible path or unknown type, not the whole collection."""
+        if not isinstance(data, dict) or not isinstance(data.get("rows"), list):
+            return data
+        rows = data["rows"]
+        kept = [
+            r for r in rows
+            if not isinstance(r, dict)
+            or (is_plausible_path(r.get("path")) and r.get("type") in CONVERSION_TYPES)
+        ]
+        return {**data, "rows": kept, "dropped_rows": len(rows) - len(kept)}
 
-def normalize_path(value: str) -> str:
-    """Reduce a URL or path to '/path/': leading and trailing slash, no query or fragment.
-
-    GSC reports full URLs and the endpoint reports paths; both meet on this form.
-    """
-    path = urlsplit(value.strip()).path or "/"
-    if not path.startswith("/"):
-        path = "/" + path
-    if not path.endswith("/"):
-        path += "/"
-    return path
+    @model_validator(mode="after")
+    def _window_is_ordered(self) -> ConversionsResponse:
+        if self.to < self.from_:
+            raise ValueError("'to' is before 'from'")
+        return self
 
 
 class WordPressConversionsProvider:
@@ -67,27 +107,52 @@ class WordPressConversionsProvider:
         api_key: str,
         timeout: float = WP_CONVERSIONS_TIMEOUT_SECONDS,
         transport: httpx.BaseTransport | None = None,
+        today: Callable[[], date] = date.today,
     ) -> None:
         self._url = endpoint_url
         self._headers = {"X-API-Key": api_key, "Accept": "application/json"}
         self._timeout = timeout
         self._transport = transport
+        self._today = today
 
     def fetch_conversions(self, property_id: str, days: int) -> dict[str, float]:
         """Return {normalised path: conversions of every type} for the window.
 
         property_id is a GA4 concept; the endpoint URL already identifies the site.
         """
+        totals = self.fetch_conversion_rows(days).totals()
+        return {path: float(count) for path, count in totals.items()}
+
+    def fetch_conversion_rows(self, days: int) -> ConversionSnapshot:
+        """Counts per normalised path and type, for the window the endpoint reported.
+
+        '/a' and '/a/' normalise to one path, so their counts are merged per type. The
+        window end is capped at the engine's today: a site clock running ahead must not
+        pin a snapshot in the future.
+        """
         body = self._get(days)
-        result: dict[str, float] = {}
+        if body.dropped_rows:
+            logger.warning(
+                "Dropped %d WordPress conversion rows with an implausible path or unknown type.",
+                body.dropped_rows,
+            )
+        counts: dict[tuple[str, str], int] = {}
         for row in body.rows:
-            path = normalize_path(row.path)
-            result[path] = result.get(path, 0.0) + float(row.count)
-        return result
+            key = (normalize_path(row.path), row.type)
+            counts[key] = counts.get(key, 0) + row.count
+        end = min(body.to, self._today())
+        return ConversionSnapshot(
+            window_end=end,
+            window_days=max(1, (end - body.from_).days + 1),
+            source="wordpress",
+            rows=[ConversionCount(path, kind, count) for (path, kind), count in counts.items()],
+        )
 
     def _get(self, days: int) -> ConversionsResponse:
         try:
-            with httpx.Client(timeout=self._timeout, transport=self._transport) as client:
+            with httpx.Client(
+                timeout=self._timeout, transport=self._transport, follow_redirects=False
+            ) as client:
                 resp = client.get(self._url, params={"days": days}, headers=self._headers)
         except httpx.TimeoutException as exc:
             raise WordPressConversionsError(
@@ -98,6 +163,14 @@ class WordPressConversionsProvider:
                 "Could not reach the WordPress conversions endpoint. Check the URL.", 502
             ) from exc
 
+        if 300 <= resp.status_code < 400:
+            # Redirects are not followed: the key must not travel to another URL.
+            raise WordPressConversionsError(
+                f"The WordPress conversions endpoint redirected (HTTP {resp.status_code}). "
+                "Set its final URL in Settings > Conversions (check https and the "
+                "trailing slash).",
+                502,
+            )
         if resp.status_code in (401, 403):
             raise WordPressConversionsError(
                 "WordPress rejected the API key. Check it in Settings > Conversions.", 502
