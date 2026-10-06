@@ -9,7 +9,9 @@ from ..credentials import is_real_value as _is_real_key
 from .null_llm import NullLLM
 
 if TYPE_CHECKING:
-    from ...domain.ports import CompetitorProvider
+    from google.oauth2.credentials import Credentials
+
+    from ...domain.ports import AnalyticsProvider, CompetitorProvider
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +120,40 @@ def make_cms(settings: Settings):
     if _is_real_key(settings.noor_base_url) and _is_real_key(settings.noor_api_key):
         from ..providers.noor import NoorCMSAdapter
         return NoorCMSAdapter(settings.noor_base_url, settings.noor_api_key)
+    return None
+
+
+CONVERSIONS_SOURCES = ("none", "ga4", "wordpress")
+
+
+def resolve_conversions_source(settings: Settings) -> str:
+    """The configured source, or the default: ga4 with a property id, else none."""
+    source = settings.conversions_source.strip().lower()
+    if not source:
+        return "ga4" if settings.ga4_property_id else "none"
+    if source not in CONVERSIONS_SOURCES:
+        logger.warning("Unknown conversions_source %r; conversions are skipped.", source)
+        return "none"
+    return source
+
+
+def make_analytics(
+    settings: Settings, credentials: Credentials | None
+) -> AnalyticsProvider | None:
+    """Conversions provider for the resolved source, or None if it is not usable."""
+    source = resolve_conversions_source(settings)
+    if source == "ga4" and settings.ga4_property_id and credentials is not None:
+        from ..google import ga4_adapter
+        return ga4_adapter.GA4AnalyticsProvider(credentials)
+    if (
+        source == "wordpress"
+        and _is_real_key(settings.wp_conversions_url)
+        and _is_real_key(settings.wp_conversions_key)
+    ):
+        from ..providers.wordpress_conversions import WordPressConversionsProvider
+        return WordPressConversionsProvider(
+            settings.wp_conversions_url, settings.wp_conversions_key
+        )
     return None
 
 

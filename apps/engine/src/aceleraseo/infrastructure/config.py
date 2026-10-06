@@ -68,6 +68,12 @@ class Settings(BaseSettings):
     noor_base_url: str = ""
     noor_api_key: str = ""
 
+    # Conversions source: none | ga4 | wordpress. Empty = ga4 when a GA4 property
+    # is set, otherwise none (see llm/factory.resolve_conversions_source).
+    conversions_source: str = ""
+    wp_conversions_url: str = ""
+    wp_conversions_key: str = ""
+
     # Autonomy guardrails (ADR-0002). Default: propose only, human approves.
     autonomy_mode: str = "none"          # none | limited | full
     max_auto_actions_per_day: int = 0

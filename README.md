@@ -42,6 +42,7 @@ under a minimum-impressions threshold, 10 by default, are hidden). Giving the re
 |-------|-----------|-------------|-------|
 | **SENSE** | Real ranking, clicks, impressions, position, CTR (16 months) | Google Search Console API | **UI** |
 | **SENSE** | Traffic, conversions (GA4 key events), revenue per landing page | GA4 Data API | **UI (collect)** |
+| **SENSE** | Conversions per landing page, first-party (no tag, no cookies) | Your WordPress site's own endpoint | **UI (collect)** |
 | **SENSE** | Technical audit (schema presence, meta, headings, canonicals, broken links, thin content) | Built-in local crawler | **UI** |
 | **SENSE** | Market: volumes, difficulty, competitors | DataForSEO (your key); for competitors only, also the free Brave Search API × your own GSC queries | **UI** |
 | **DECIDE** | Business classification + winnable-keyword strategy | LLM reasoning over the above | **UI** |
@@ -136,6 +137,21 @@ loop; the dashboard currently exposes Decide (Strategy), competitor analysis, th
 audit, connecting Google plus running a SENSE collection (Settings), and what ranks and
 what is slipping (Rankings). Conversions, ACT and LEARN are reachable over the API while
 their screens are built.
+
+### Conversion sources
+
+SENSE reads conversions per landing page from one source, chosen in Settings → Conversions
+(`conversions_source`):
+
+| Value | Reads from | Needs |
+|---|---|---|
+| `ga4` | GA4 key events | `ga4_property_id` and the Google connection |
+| `wordpress` | The site's own endpoint (first-party, no cookies) | `wp_conversions_url` and `wp_conversions_key` |
+| `none` | Nothing; conversions are skipped | |
+
+Left empty, it means `ga4` when a GA4 property ID is set and `none` otherwise, so existing
+installs keep working. The endpoint contract is in
+[docs/plans/first-party-conversions.md](./docs/plans/first-party-conversions.md).
 
 - Honest, per-milestone status: [docs/ROADMAP.md](./docs/ROADMAP.md)
 - What gets built next, and in what order: [docs/PLAN.md](./docs/PLAN.md)

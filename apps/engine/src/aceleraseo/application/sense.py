@@ -18,18 +18,19 @@ class SenseResult:
     rankings_fetched: int
     rankings_new: int
     pages_with_conversions: int
-    # Rows GA4 returned (landing pages). 0 with a property set = GA4 has no data.
-    ga4_rows: int = 0
+    # Rows the conversions source returned (landing pages). 0 with a source = no data.
+    conversion_rows: int = 0
 
 
 class CollectSignals:
     def __init__(
         self,
         rankings: RankingProvider,
-        analytics: AnalyticsProvider,
+        analytics: AnalyticsProvider | None,
         repository,
     ):
         self._rankings = rankings
+        # None = no conversions source configured (see make_analytics).
         self._analytics = analytics
         self._repo = repository
 
@@ -43,29 +44,31 @@ class CollectSignals:
         new_rows = self._repo.save_many(site_url, signals)
 
         pages_with_conversions = 0
-        ga4_rows = 0
-        if property_id:
+        rows = 0
+        if self._analytics is not None:
             conversions = self._analytics.fetch_conversions(property_id, days)
             pages_with_conversions = sum(1 for v in conversions.values() if v > 0)
-            ga4_rows = len(conversions)
+            rows = len(conversions)
             logger.info(
-                "GA4 returned %d landing pages, %.0f key events in total, %d pages with > 0",
-                ga4_rows,
+                "Conversions source returned %d landing pages, %.0f conversions in total, "
+                "%d pages with > 0",
+                rows,
                 sum(conversions.values()),
                 pages_with_conversions,
             )
-            if ga4_rows == 0:
+            if rows == 0:
                 logger.warning(
-                    "GA4 returned no rows for the last %d days: the property is receiving "
-                    "no data. Check that the Google tag is installed on the site.",
+                    "The conversions source returned no rows for the last %d days. For GA4, "
+                    "check that the Google tag is installed; for WordPress, that the "
+                    "endpoint records conversions.",
                     days,
                 )
         else:
-            logger.info("GA4 skipped: no property id configured")
+            logger.info("Conversions skipped: no conversions source configured")
 
         return SenseResult(
             rankings_fetched=len(signals),
             rankings_new=new_rows,
             pages_with_conversions=pages_with_conversions,
-            ga4_rows=ga4_rows,
+            conversion_rows=rows,
         )

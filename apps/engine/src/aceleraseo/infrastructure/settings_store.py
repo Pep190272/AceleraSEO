@@ -72,6 +72,14 @@ SCHEMA: list[Field] = [
           "https://example.com"),
     Field("noor_api_key", "Noor API key", "Noor CMS", True,
           "X-API-Key used to authenticate against the Noor SEO API."),
+    Field("conversions_source", "Conversions source", "Conversions", False,
+          "none · ga4 · wordpress. Empty = ga4 when a GA4 property ID is set, else none.",
+          "wordpress"),
+    Field("wp_conversions_url", "WordPress conversions endpoint", "Conversions", False,
+          "Full URL of the site's conversions endpoint (first-party, no cookies).",
+          "https://example.com/wp-json/example/v1/conversions"),
+    Field("wp_conversions_key", "WordPress conversions key", "Conversions", True,
+          "X-API-Key the conversions endpoint expects."),
 ]
 
 _KEYS = {f.key for f in SCHEMA}
