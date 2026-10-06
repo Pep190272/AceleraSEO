@@ -22,6 +22,7 @@ type NamespacedDict = {
   res: Record<string, string>;
   audit: Record<string, string>;
   comp: Record<string, string>;
+  rank: Record<string, string>;
   set: Record<string, string>;
   setFields: Record<string, string>;
   common: Record<string, string>;
@@ -34,6 +35,7 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "nav.audit": "Auditoría técnica",
       "nav.settings": "Ajustes",
       "nav.competitors": "Competidores",
+      "nav.rankings": "Posiciones",
     },
     engine: {
       "engine.online": "motor en línea",
@@ -132,6 +134,24 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "comp.kw.col.term": "Término",
       "comp.kw.col.pos": "Posición",
       "comp.kw.col.vol": "Volumen",
+    },
+    rank: {
+      "rank.lead": "Qué consultas te traen tráfico desde Google y cuáles están perdiendo posición.",
+      "rank.window": "Periodo",
+      "rank.days": "días",
+      "rank.loading": "Cargando posiciones…",
+      "rank.no_site_url": "Configura la URL del sitio de Search Console en Ajustes para ver tus posiciones.",
+      "rank.not_connected": "Aún no hay datos. Conecta tu cuenta de Google en Ajustes y ejecuta una recolección.",
+      "rank.empty": "Aún no hay datos para este periodo. Ejecuta una recolección en Ajustes.",
+      "rank.period": "Datos del",
+      "rank.col.query": "Consulta",
+      "rank.col.clicks": "Clics",
+      "rank.col.impressions": "Impresiones",
+      "rank.col.position": "Posición media",
+      "rank.new": "nueva",
+      "rank.delta.hint":
+        "Δ compara con el periodo anterior de igual duración; positivo significa que la consulta bajó. La posición es la media ponderada por impresiones de todas tus páginas.",
+      "rank.no_conversions": "Las conversiones de GA4 todavía no se guardan, así que aquí no aparecen.",
     },
     set: {
       "set.loading": "Cargando ajustes…",
@@ -256,6 +276,7 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "nav.audit": "Technical audit",
       "nav.settings": "Settings",
       "nav.competitors": "Competitors",
+      "nav.rankings": "Rankings",
     },
     engine: {
       "engine.online": "engine online",
@@ -354,6 +375,24 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "comp.kw.col.term": "Term",
       "comp.kw.col.pos": "Position",
       "comp.kw.col.vol": "Volume",
+    },
+    rank: {
+      "rank.lead": "Which queries bring you traffic from Google, and which are slipping.",
+      "rank.window": "Window",
+      "rank.days": "days",
+      "rank.loading": "Loading rankings…",
+      "rank.no_site_url": "Set the Search Console site URL in Settings to see your rankings.",
+      "rank.not_connected": "No data yet. Connect your Google account in Settings and run a collection.",
+      "rank.empty": "No data for this window yet. Run a collection in Settings.",
+      "rank.period": "Data from",
+      "rank.col.query": "Query",
+      "rank.col.clicks": "Clicks",
+      "rank.col.impressions": "Impressions",
+      "rank.col.position": "Avg. position",
+      "rank.new": "new",
+      "rank.delta.hint":
+        "Δ compares with the previous window of equal length; positive means the query slipped. Position is the impression-weighted average across all your pages.",
+      "rank.no_conversions": "GA4 conversions are not stored yet, so they do not appear here.",
     },
     set: {
       "set.loading": "Loading settings…",
