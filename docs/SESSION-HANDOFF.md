@@ -1,5 +1,15 @@
 # Session handoff — AceleraSEO
 
+## Update 2026-10-06 — slice 3 in progress
+
+- **Branch `feat/slice-3-sense-view`** (unmerged, no PR yet): `GET /sense/rankings`
+  (token-guarded read-back of the collected rankings) and a `dashboard` CI job (build +
+  typecheck). The Rankings tab goes on the stacked `feat/slice-3-sense-view-ui`.
+- **`selectolax` is pinned below 1.0**: 1.0 dropped the Modest backend `crawler.py`
+  imports, so a fresh install failed test collection.
+- CI runs on `pull_request` and pushes to `main` only, so the new job first runs when the
+  PR opens.
+
 ## Session 2026-09-15 — latest
 
 **Read this section first.** Everything below it is the 2026-05-31 snapshot.
