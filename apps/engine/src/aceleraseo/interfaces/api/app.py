@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import socket
+from dataclasses import asdict
 from urllib.parse import urlencode
 
 from fastapi import Depends, FastAPI, HTTPException, Query
@@ -276,6 +277,36 @@ def sense_run(days: int = Query(90, ge=1, le=480)) -> dict:
         # False means conversions were skipped, not that there were zero —
         # CollectSignals.execute() only calls GA4 when a property id is set.
         "ga4_configured": bool(settings.ga4_property_id),
+    }
+
+
+@app.get("/sense/rankings", dependencies=_COSTLY)
+def sense_rankings(
+    days: int = Query(28, ge=1, le=240),
+    limit: int = Query(50, ge=1, le=500),
+) -> dict:
+    """What ranks and what is slipping, from the persisted Search Console rows.
+
+    Guarded by the token: it returns the client's search data.
+    """
+    from datetime import date as _date
+
+    from ...application.report import ReportRankings
+
+    settings = get_settings()
+    if not settings.gsc_site_url:
+        raise HTTPException(400, "GSC_SITE_URL not set in .env.")
+    repo = RankingRepository(make_session_factory(settings.database_url))
+    report = ReportRankings(repo).execute(settings.gsc_site_url, _date.today(), days, limit)
+    return {
+        "site_url": report.site_url,
+        "window": {"start": report.start.isoformat(), "end": report.end.isoformat(),
+                   "days": report.days},
+        "first_observed_on": report.first_observed_on.isoformat()
+        if report.first_observed_on else None,
+        "last_observed_on": report.last_observed_on.isoformat()
+        if report.last_observed_on else None,
+        "rows": [asdict(r) for r in report.rows],
     }
 
 

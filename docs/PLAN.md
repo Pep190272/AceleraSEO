@@ -89,7 +89,7 @@ What is missing is the last hop:
 
 | Stage | Engine | Dashboard |
 |---|---|---|
-| SENSE | ✅ `/sense/run`, `/auth/google/*` | ❌ nothing — no OAuth button exists |
+| SENSE | ✅ `/sense/run`, `/auth/google/*`, `/sense/rankings` | ❌ nothing — no OAuth button exists |
 | DECIDE | ✅ `/strategy/preview`, `/strategy/discover` | ✅ Strategy tab |
 | ACT | ✅ `/act/indexnow`, `/act/index-status`, `/act/proposals` | ❌ nothing |
 | LEARN | ✅ `/learn/outcome` | ❌ nothing |
@@ -99,8 +99,8 @@ Nine of twenty engine endpoints are reachable by clicking. The Settings tab coll
 `google_oauth_client_secret` — four fields that currently lead nowhere, because nothing in
 the UI ever starts the consent flow or triggers a collection run.
 
-**A read endpoint over the collected time series.** `/sense/run` persists data; nothing
-serves it back for display. Slice 3 needs this.
+**A read endpoint over the collected time series.** Done in slice 3:
+`GET /sense/rankings` serves the persisted series back, aggregated per query.
 
 ### What is dead or hollow
 
@@ -122,7 +122,7 @@ serves it back for display. Slice 3 needs this.
 
 ### Ports worth adding, in order of value
 
-1. **`SearchConsolePort` read-back** — serve the persisted series (blocks slice 3).
+1. ~~**`SearchConsolePort` read-back**~~ — done in slice 3 (`RankingRepository.summarize_by_query`).
 2. **A second `MarketPort` adapter** — SerpApi, to prove the port abstraction is real
    rather than aspirational. Low urgency; high demonstrative value for a showcase repo.
 3. **A second `CMSPort` adapter** — WordPress. Turns Noor from a private integration into
@@ -204,6 +204,14 @@ built, and it is the first screen that justifies connecting Google at all.
   persisted series (persistence already exists).
 - **Verify:** the tab shows real queries, positions and clicks.
 - **Free.**
+- **Status:** engine half done on `feat/slice-3-sense-view`
+  ([plan](./plans/slice-3-sense-view.md)): `GET /sense/rankings` (token-guarded) plus a
+  dashboard build + typecheck CI job. The Rankings tab is stacked on
+  `feat/slice-3-sense-view-ui`. "What's converting" is out: GA4 conversions are not
+  persisted yet.
+- **Known limits:** the window ends at the last collected day; the previous window is
+  compared even when it is only partly collected, so early deltas can mislead; `GROUP BY`
+  on the 2,048-char `query` column has no index (fine at ~5k rows).
 
 ### Slice 4 — Close the loop: LEARN in the UI (~1.5 h)
 
@@ -341,8 +349,8 @@ default `t` under `NODE_ENV !== "production"`, or throw from `useT()` when the c
 still the default sentinel.
 
 **Separately, and cheap:** `apps/dashboard` has **no ESLint config at all** — `npx next
-lint` drops into an interactive setup wizard. The engine has Ruff in CI; the dashboard has
-nothing. Worth closing on its own, and it is what left this class of defect invisible.
+lint` drops into an interactive setup wizard. The engine has Ruff in CI; since slice 3 the
+dashboard has a build + typecheck CI job, but still no linter. Worth closing on its own, and it is what left this class of defect invisible.
 
 ---
 

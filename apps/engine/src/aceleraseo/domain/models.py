@@ -48,6 +48,15 @@ class RankingSignal:
 
 
 @dataclass(frozen=True)
+class QueryRanking:
+    """One query aggregated over a date window. Position is impression-weighted."""
+    query: str
+    clicks: int
+    impressions: int
+    position: float
+
+
+@dataclass(frozen=True)
 class Keyword:
     term: str
     search_volume: int

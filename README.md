@@ -34,7 +34,7 @@ We did the research so you don't chase impossible promises:
 **Reach** says how you use it today: **UI** = a tab in the dashboard; **API** = implemented,
 tested and exposed over HTTP, but with no screen yet; **UI (collect)** = you can connect
 Google and run the collection from the **Settings** tab, but the collected data has no
-screen yet. Giving the remaining rows a UI is slices 3–5 of [docs/PLAN.md](./docs/PLAN.md)
+screen yet (the engine already serves it, aggregated per query, at `GET /sense/rankings`). Giving the remaining rows a UI is slices 3–5 of [docs/PLAN.md](./docs/PLAN.md)
 (slices 1–2, connect Google and run SENSE from the UI, are done).
 
 | Layer | Capability | Data source | Reach |
