@@ -59,6 +59,13 @@ AceleraSEO) with a 30 s timeout per `runReport` call. A report with **zero rows*
 GA4 is receiving no data at all, usually because the Google tag (`gtag.js` / GTM) is not
 installed on the site; SENSE logs a warning and returns `ga4_rows: 0`.
 
+**First-party alternative (no GA4).** With `conversions_source = wordpress`, SENSE reads
+aggregated counts from the site's own endpoint instead (contract in
+`docs/plans/first-party-conversions.md`). One `GET` per collection, `X-API-Key` header,
+30 s timeout. Failures map to readable statuses: a rejected key or malformed body → 502,
+timeout → 504, the site rate limiting (429) → 429. No quota beyond what the site itself
+enforces.
+
 → **Design decision:** The closed feedback loop (LEARN) is built entirely on free, official, read APIs. This is where AceleraSEO beats Ahrefs — Ahrefs never touches your GSC/GA4.
 
 ## Summary of what shaped the design

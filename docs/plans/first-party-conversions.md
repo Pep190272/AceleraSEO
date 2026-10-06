@@ -4,6 +4,7 @@
 - Base: `main` @ `1cc55ae`
 - Branch: `feat/wp-first-party-conversions`
 - Replaces: GA4 as the only conversion source (`infrastructure/google/ga4_adapter.py`)
+- Status: PR A (provider, settings, `/sense/run`) in review on `feat/wp-conversions-provider`; PR B pending
 
 ## Why
 

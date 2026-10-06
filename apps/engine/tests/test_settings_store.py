@@ -107,3 +107,19 @@ def test_empty_value_is_not_set(store):
     rows = {r["key"]: r for r in store.describe(FakeSettings())}
     assert rows["noor_api_key"]["is_set"] is False
     assert rows["gsc_site_url"]["is_set"] is False
+
+
+def test_wordpress_conversions_key_is_masked(store):
+    class FakeSettings:
+        wp_conversions_url = "https://example.com/conversions"
+        wp_conversions_key = "wp-secret-value"
+
+        def __getattr__(self, name):
+            return ""
+
+    rows = {r["key"]: r for r in store.describe(FakeSettings())}
+    assert rows["wp_conversions_key"]["secret"] is True
+    assert rows["wp_conversions_key"]["value"] == ""
+    assert rows["wp_conversions_key"]["is_set"] is True
+    assert rows["wp_conversions_url"]["value"] == "https://example.com/conversions"
+    assert "conversions_source" in rows

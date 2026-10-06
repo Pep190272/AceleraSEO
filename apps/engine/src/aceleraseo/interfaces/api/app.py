@@ -21,11 +21,12 @@ from ...application.sense import CollectSignals
 from ...domain.models import Severity
 from ...infrastructure.config import get_settings
 from ...infrastructure.google import oauth
-from ...infrastructure.google.ga4_adapter import GA4AnalyticsProvider
 from ...infrastructure.google.gsc_adapter import GSCRankingProvider
+from ...infrastructure.llm.factory import make_analytics, resolve_conversions_source
 from ...infrastructure.persistence.db import make_session_factory
 from ...infrastructure.persistence.repository import RankingRepository
 from ...infrastructure.providers.crawler import HttpxCrawler
+from ...infrastructure.providers.wordpress_conversions import WordPressConversionsError
 from ...infrastructure.providers.url_safety import UnsafeURLError, ensure_public_url
 from .guards import require_token, require_write_access, warn_if_token_missing
 from .log_redaction import install_access_log_redaction
@@ -166,7 +167,7 @@ def google_callback(
 
 @app.post("/sense/run", dependencies=_WRITE)
 def sense_run(days: int = Query(90, ge=1, le=480)) -> dict:
-    """Run a SENSE collection cycle against Search Console (+ GA4 if configured).
+    """Run a SENSE collection cycle against Search Console (+ the conversions source).
 
     Failure modes are mapped to a message the caller can show as-is, never a
     raw 500: no connection (401), a broken/corrupt saved token (401, same
@@ -206,10 +207,19 @@ def sense_run(days: int = Query(90, ge=1, le=480)) -> dict:
             "Settings tab → Google.",
         )
 
+    source = resolve_conversions_source(settings)
+    analytics = make_analytics(settings, creds)
+    if source == "wordpress" and analytics is None:
+        raise HTTPException(
+            400,
+            "WordPress conversions are selected but the endpoint URL or key is missing. "
+            "Set them in the Settings tab → Conversions.",
+        )
+
     session_factory = make_session_factory(settings.database_url)
     use_case = CollectSignals(
         rankings=GSCRankingProvider(creds),
-        analytics=GA4AnalyticsProvider(creds),
+        analytics=analytics,
         repository=RankingRepository(session_factory),
     )
     try:
@@ -218,6 +228,10 @@ def sense_run(days: int = Query(90, ge=1, le=480)) -> dict:
             property_id=settings.ga4_property_id,
             days=days,
         )
+    except WordPressConversionsError as exc:
+        # The site's own endpoint failed; the provider already chose the status.
+        logger.warning("WordPress conversions endpoint failed (%s).", exc.status_code)
+        raise HTTPException(exc.status_code, str(exc)) from exc
     except (HttpError, GoogleAPICallError) as exc:
         # Search Console (HttpError, googleapiclient) or GA4 (GoogleAPICallError,
         # the gRPC client) rejected or throttled the call once collection was
@@ -278,11 +292,14 @@ def sense_run(days: int = Query(90, ge=1, le=480)) -> dict:
         "rankings_fetched": result.rankings_fetched,
         "rankings_new": result.rankings_new,
         "pages_with_conversions": result.pages_with_conversions,
-        # False means conversions were skipped, not that there were zero —
-        # CollectSignals.execute() only calls GA4 when a property id is set.
-        "ga4_configured": bool(settings.ga4_property_id),
+        # none | ga4 | wordpress: where conversions came from ("none" = skipped).
+        "analytics_source": source if analytics is not None else "none",
+        # Kept for older dashboards. False means GA4 was not the source.
+        "ga4_configured": source == "ga4" and analytics is not None,
         # 0 with GA4 configured means the property received no data (no Google tag?).
-        "ga4_rows": result.ga4_rows,
+        "ga4_rows": result.conversion_rows if source == "ga4" else 0,
+        # Rows the active source returned, whichever it is.
+        "conversion_rows": result.conversion_rows,
     }
 
 

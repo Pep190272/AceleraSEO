@@ -16,9 +16,11 @@ from google.auth.exceptions import RefreshError, TransportError
 from google.oauth2.credentials import Credentials
 from googleapiclient.errors import HttpError
 
+import aceleraseo.infrastructure.google.ga4_adapter as ga4_adapter
 import aceleraseo.interfaces.api.app as app_module
 from aceleraseo.domain.models import RankingSignal
 from aceleraseo.infrastructure.config import Settings
+from aceleraseo.infrastructure.providers.wordpress_conversions import WordPressConversionsError
 
 
 def _settings(tmp_path, **overrides) -> Settings:
@@ -84,7 +86,7 @@ class FakeAnalyticsProvider:
 @pytest.fixture
 def fake_providers(monkeypatch):
     monkeypatch.setattr(app_module, "GSCRankingProvider", FakeRankingProvider)
-    monkeypatch.setattr(app_module, "GA4AnalyticsProvider", FakeAnalyticsProvider)
+    monkeypatch.setattr(ga4_adapter, "GA4AnalyticsProvider", FakeAnalyticsProvider)
 
 
 class _FakeResp:
@@ -201,7 +203,7 @@ def test_sense_run_maps_google_api_failures_not_a_raw_500(
     client, monkeypatch, google_status, expected_status
 ):
     monkeypatch.setattr(app_module, "GSCRankingProvider", _raising_ranking_provider(google_status))
-    monkeypatch.setattr(app_module, "GA4AnalyticsProvider", FakeAnalyticsProvider)
+    monkeypatch.setattr(ga4_adapter, "GA4AnalyticsProvider", FakeAnalyticsProvider)
     _write_token(client.settings, expired=False)
     res = client.post("/sense/run")
     assert res.status_code == expected_status
@@ -223,7 +225,7 @@ def test_sense_run_maps_a_ga4_rejection_not_a_raw_500(client, tmp_path, monkeypa
 
     settings = _settings(tmp_path, ga4_property_id="123")
     monkeypatch.setattr(app_module, "get_settings", lambda: settings)
-    monkeypatch.setattr(app_module, "GA4AnalyticsProvider", RaisingAnalyticsProvider)
+    monkeypatch.setattr(ga4_adapter, "GA4AnalyticsProvider", RaisingAnalyticsProvider)
     _write_token(settings, expired=False)
     res = client.post("/sense/run")
     assert res.status_code == 401  # PermissionDenied.code == 403 -> mapped to 401
@@ -247,7 +249,7 @@ def test_sense_run_ga4_rejection_names_the_property_id(
 
     settings = _settings(tmp_path, ga4_property_id="123456789")
     monkeypatch.setattr(app_module, "get_settings", lambda: settings)
-    monkeypatch.setattr(app_module, "GA4AnalyticsProvider", RaisingAnalyticsProvider)
+    monkeypatch.setattr(ga4_adapter, "GA4AnalyticsProvider", RaisingAnalyticsProvider)
     _write_token(settings, expired=False)
     res = client.post("/sense/run")
     assert res.status_code == expected_status
@@ -278,8 +280,63 @@ def test_sense_run_maps_network_failures_not_a_raw_500(client, monkeypatch, exc,
             raise exc
 
     monkeypatch.setattr(app_module, "GSCRankingProvider", NetworkFailingRankingProvider)
-    monkeypatch.setattr(app_module, "GA4AnalyticsProvider", FakeAnalyticsProvider)
+    monkeypatch.setattr(ga4_adapter, "GA4AnalyticsProvider", FakeAnalyticsProvider)
     _write_token(client.settings, expired=False)
     res = client.post("/sense/run")
     assert res.status_code == expected_status
     assert "Google" in res.json()["detail"]
+
+
+# ── WordPress conversions source ──
+def _wordpress(tmp_path, monkeypatch, provider) -> None:
+    settings = _settings(tmp_path, ga4_property_id="123", conversions_source="wordpress",
+                         wp_conversions_url="https://example.com/conversions",
+                         wp_conversions_key="real-key")
+    monkeypatch.setattr(app_module, "get_settings", lambda: settings)
+    monkeypatch.setattr(app_module, "make_analytics", lambda s, creds: provider)
+    _write_token(settings, expired=False)
+
+
+def test_sense_run_with_wordpress_reports_the_source(client, tmp_path, monkeypatch,
+                                                     fake_providers):
+    class FakeWordPress:
+        def fetch_conversions(self, property_id, days):
+            return {"/a/": 2.0, "/b/": 0.0}
+
+    _wordpress(tmp_path, monkeypatch, FakeWordPress())
+    body = client.post("/sense/run").json()
+    assert body["analytics_source"] == "wordpress"
+    assert body["pages_with_conversions"] == 1
+    assert body["conversion_rows"] == 2
+    assert body["ga4_configured"] is False
+    assert body["ga4_rows"] == 0
+
+
+@pytest.mark.parametrize("status", [502, 504, 429])
+def test_sense_run_maps_wordpress_failures(client, tmp_path, monkeypatch, fake_providers,
+                                           status):
+    class FailingWordPress:
+        def fetch_conversions(self, property_id, days):
+            raise WordPressConversionsError("WordPress rejected the API key.", status)
+
+    _wordpress(tmp_path, monkeypatch, FailingWordPress())
+    res = client.post("/sense/run")
+    assert res.status_code == status
+    assert "WordPress" in res.json()["detail"]
+
+
+def test_sense_run_with_wordpress_but_no_key_is_400(client, tmp_path, monkeypatch,
+                                                    fake_providers):
+    settings = _settings(tmp_path, conversions_source="wordpress")
+    monkeypatch.setattr(app_module, "get_settings", lambda: settings)
+    _write_token(settings, expired=False)
+    res = client.post("/sense/run")
+    assert res.status_code == 400
+    assert "Conversions" in res.json()["detail"]
+
+
+def test_sense_run_reports_ga4_as_the_source(client, tmp_path, monkeypatch, fake_providers):
+    settings = _settings(tmp_path, ga4_property_id="123")
+    monkeypatch.setattr(app_module, "get_settings", lambda: settings)
+    _write_token(settings, expired=False)
+    assert client.post("/sense/run").json()["analytics_source"] == "ga4"
