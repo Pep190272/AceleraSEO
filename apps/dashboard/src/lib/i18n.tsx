@@ -139,6 +139,9 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "rank.lead": "Qué consultas te traen tráfico desde Google y cuáles están perdiendo posición.",
       "rank.window": "Periodo",
       "rank.days": "días",
+      "rank.min_impressions": "Impresiones mínimas",
+      "rank.empty_filtered":
+        "Ninguna consulta llega al mínimo de impresiones en este periodo. Baja el filtro para verlas.",
       "rank.loading": "Cargando posiciones…",
       "rank.no_site_url": "Configura la URL del sitio de Search Console en Ajustes para ver tus posiciones.",
       "rank.not_connected": "Aún no hay datos. Conecta tu cuenta de Google en Ajustes y ejecuta una recolección.",
@@ -149,6 +152,7 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "rank.col.impressions": "Impresiones",
       "rank.col.position": "Posición media",
       "rank.new": "nueva",
+      "rank.thin": "Muy pocos datos en el periodo anterior para comparar.",
       "rank.delta.hint":
         "Δ compara con el periodo anterior de igual duración; positivo significa que la consulta bajó. La posición es la media ponderada por impresiones de todas tus páginas.",
       "rank.no_conversions": "Las conversiones de GA4 todavía no se guardan, así que aquí no aparecen.",
@@ -382,6 +386,9 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "rank.lead": "Which queries bring you traffic from Google, and which are slipping.",
       "rank.window": "Window",
       "rank.days": "days",
+      "rank.min_impressions": "Minimum impressions",
+      "rank.empty_filtered":
+        "No query reaches the minimum impressions in this window. Lower the filter to see them.",
       "rank.loading": "Loading rankings…",
       "rank.no_site_url": "Set the Search Console site URL in Settings to see your rankings.",
       "rank.not_connected": "No data yet. Connect your Google account in Settings and run a collection.",
@@ -392,6 +399,7 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "rank.col.impressions": "Impressions",
       "rank.col.position": "Avg. position",
       "rank.new": "new",
+      "rank.thin": "Too little data in the previous period to compare.",
       "rank.delta.hint":
         "Δ compares with the previous window of equal length; positive means the query slipped. Position is the impression-weighted average across all your pages.",
       "rank.no_conversions": "GA4 conversions are not stored yet, so they do not appear here.",

@@ -3,6 +3,10 @@
 Reads the persisted time-series, aggregates the latest window per query and
 compares it with the window of equal length right before it (the same
 before/after comparison LEARN uses). Positive ``position_delta`` means worse.
+
+Queries with fewer than ``min_impressions`` impressions in the current window are
+left out, and ``position_delta`` is withheld when the previous window has fewer
+than that: a handful of impressions makes the average position swing wildly.
 """
 from __future__ import annotations
 
@@ -17,7 +21,12 @@ class RankingReader(Protocol):
     def observed_range(self, site_url: str) -> tuple[date | None, date | None]: ...
 
     def summarize_by_query(
-        self, site_url: str, start: date, end: date, limit: int | None = None
+        self,
+        site_url: str,
+        start: date,
+        end: date,
+        limit: int | None = None,
+        min_impressions: int = 0,
     ) -> list[QueryRanking]: ...
 
 
@@ -28,6 +37,7 @@ class RankingRow:
     impressions: int
     position: float
     previous_position: float | None
+    previous_impressions: int
     position_delta: float | None
 
 
@@ -37,6 +47,7 @@ class RankingsReport:
     start: date
     end: date
     days: int
+    min_impressions: int
     first_observed_on: date | None
     last_observed_on: date | None
     rows: list[RankingRow] = field(default_factory=list)
@@ -47,7 +58,12 @@ class ReportRankings:
         self._repo = repository
 
     def execute(
-        self, site_url: str, today: date, days: int = 28, limit: int = 50
+        self,
+        site_url: str,
+        today: date,
+        days: int = 28,
+        limit: int = 50,
+        min_impressions: int = 0,
     ) -> RankingsReport:
         """Aggregate the last ``days`` days of data, ending at the latest collected day.
 
@@ -59,12 +75,12 @@ class ReportRankings:
         end = min(last, today) if last else today
         start = end - timedelta(days=days - 1)
         if last is None:
-            return RankingsReport(site_url, start, end, days, first, last)
+            return RankingsReport(site_url, start, end, days, min_impressions, first, last)
 
-        current = self._repo.summarize_by_query(site_url, start, end, limit)
+        current = self._repo.summarize_by_query(site_url, start, end, limit, min_impressions)
         prev_end = start - timedelta(days=1)
         previous = {
-            r.query: r.position
+            r.query: r
             for r in self._repo.summarize_by_query(
                 site_url, prev_end - timedelta(days=days - 1), prev_end
             )
@@ -72,12 +88,16 @@ class ReportRankings:
         rows = []
         for r in current:
             before = previous.get(r.query)
+            delta = None
+            if before is not None and before.impressions >= min_impressions:
+                delta = round(r.position - before.position, 2)
             rows.append(RankingRow(
                 query=r.query,
                 clicks=r.clicks,
                 impressions=r.impressions,
                 position=round(r.position, 2),
-                previous_position=None if before is None else round(before, 2),
-                position_delta=None if before is None else round(r.position - before, 2),
+                previous_position=None if before is None else round(before.position, 2),
+                previous_impressions=0 if before is None else before.impressions,
+                position_delta=delta,
             ))
-        return RankingsReport(site_url, start, end, days, first, last, rows)
+        return RankingsReport(site_url, start, end, days, min_impressions, first, last, rows)
