@@ -155,7 +155,14 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "rank.thin": "Muy pocos datos en el periodo anterior para comparar.",
       "rank.delta.hint":
         "Δ compara con el periodo anterior de igual duración; positivo significa que la consulta bajó. La posición es la media ponderada por impresiones de todas tus páginas.",
-      "rank.no_conversions": "Las conversiones de GA4 todavía no se guardan, así que aquí no aparecen.",
+      "rank.no_conversions":
+        "No hay ninguna fuente de conversiones configurada, así que aquí no aparecen. Elige una en Ajustes → Conversiones.",
+      "rank.col.conversions": "Conversiones",
+      "rank.conversions.hint":
+        "Conversiones de la página principal de cada consulta (la que más clics recibe), según la última recolección. Las consultas que comparten página muestran la misma cifra.",
+      "rank.conversions.period": "Conversiones del",
+      "rank.conversions.none_yet": "Aún no se han recolectado conversiones. Ejecuta una recolección en Ajustes.",
+      "rank.conversions.page": "Página",
     },
     set: {
       "set.loading": "Cargando ajustes…",
@@ -417,7 +424,14 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "rank.thin": "Too little data in the previous period to compare.",
       "rank.delta.hint":
         "Δ compares with the previous window of equal length; positive means the query slipped. Position is the impression-weighted average across all your pages.",
-      "rank.no_conversions": "GA4 conversions are not stored yet, so they do not appear here.",
+      "rank.no_conversions":
+        "No conversions source is set, so conversions do not appear here. Choose one in Settings → Conversions.",
+      "rank.col.conversions": "Conversions",
+      "rank.conversions.hint":
+        "Conversions of each query's top page (the one with the most clicks), from the latest collection. Queries that share a page show the same count.",
+      "rank.conversions.period": "Conversions from",
+      "rank.conversions.none_yet": "No conversions collected yet. Run a collection in Settings.",
+      "rank.conversions.page": "Page",
     },
     set: {
       "set.loading": "Loading settings…",

@@ -135,8 +135,8 @@ What each optional key buys you, and what still works without it:
 **In active development.** The engine implements the full Sense → Decide → Act → Learn
 loop; the dashboard currently exposes Decide (Strategy), competitor analysis, the technical
 audit, connecting Google plus running a SENSE collection (Settings), and what ranks and
-what is slipping (Rankings). Conversions, ACT and LEARN are reachable over the API while
-their screens are built.
+what is slipping, with the conversions of each query's top page (Rankings). ACT and LEARN
+are reachable over the API while their screens are built.
 
 ### Conversion sources
 

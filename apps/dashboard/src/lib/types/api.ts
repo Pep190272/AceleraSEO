@@ -80,7 +80,7 @@ export type SenseResult = {
   /** Rows GA4 returned. 0 while configured means the property received no data. */
   ga4_rows: number;
   /** Where conversions came from; "none" means they were skipped. */
-  analytics_source: "none" | "ga4" | "wordpress";
+  analytics_source: ConversionsSource;
   /** Rows the active source returned, whichever it is. */
   conversion_rows: number;
 };
@@ -98,7 +98,14 @@ export type RankingRow = {
   // current − previous; positive means the query slipped. null = not in the
   // previous window, or below min_impressions there (too little data to compare).
   position_delta: number | null;
+  /** Search Console URL of the query's top page (most clicks); null without conversions. */
+  // Optional: an engine older than the conversions column omits these fields.
+  top_page?: string | null;
+  /** Conversions of the top page in the latest collection. null = none collected; 0 is real. */
+  conversions?: number | null;
 };
+
+export type ConversionsSource = "none" | "ga4" | "wordpress";
 
 export type RankingsReport = {
   site_url: string;
@@ -107,4 +114,8 @@ export type RankingsReport = {
   first_observed_on: string | null;
   last_observed_on: string | null;
   rows: RankingRow[];
+  /** Absent from an engine older than the conversions column. */
+  conversions_source?: ConversionsSource;
+  /** Window of the conversions snapshot shown; null when none is collected. */
+  conversions_window?: { start: string; end: string; days: number } | null;
 };

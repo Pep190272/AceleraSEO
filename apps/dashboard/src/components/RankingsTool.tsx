@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 
 import { apiFetch } from "@/lib/api";
 import { useT } from "@/lib/i18n";
-import type { GoogleStatus, RankingsReport } from "@/lib/types/api";
+import type { ConversionsSource, GoogleStatus, RankingsReport } from "@/lib/types/api";
+
+const SOURCE_LABEL: Record<Exclude<ConversionsSource, "none">, string> = {
+  ga4: "GA4",
+  wordpress: "WordPress",
+};
 
 const WINDOWS = [7, 28, 90] as const;
 type WindowDays = (typeof WINDOWS)[number];
@@ -67,6 +72,11 @@ export default function RankingsTool() {
   const num = (n: number) => n.toLocaleString(lang);
   const pos = (n: number) =>
     n.toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+  // An older engine sends no conversions_source: no column and no note, rather than a guess.
+  const source = view.kind === "ready" ? (view.report.conversions_source ?? null) : null;
+  const showConversions = source === "ga4" || source === "wordpress";
+  const conversionsWindow =
+    view.kind === "ready" ? (view.report.conversions_window ?? null) : null;
 
   return (
     <div className="panel">
@@ -130,6 +140,13 @@ export default function RankingsTool() {
           <p className="hint">
             {t("rank.period")} {view.report.window.start} → {view.report.window.end}
           </p>
+          {(source === "ga4" || source === "wordpress") && (
+            <p className="hint">
+              {conversionsWindow
+                ? `${t("rank.conversions.period")} ${conversionsWindow.start} → ${conversionsWindow.end} (${SOURCE_LABEL[source]})`
+                : t("rank.conversions.none_yet")}
+            </p>
+          )}
           <table>
             <thead>
               <tr>
@@ -138,6 +155,9 @@ export default function RankingsTool() {
                 <th>{t("rank.col.impressions")}</th>
                 <th>{t("rank.col.position")}</th>
                 <th title={t("rank.delta.hint")}>Δ</th>
+                {showConversions && (
+                  <th title={t("rank.conversions.hint")}>{t("rank.col.conversions")}</th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -168,15 +188,28 @@ export default function RankingsTool() {
                         ? t("rank.new")
                         : "—"}
                   </td>
+                  {showConversions && (
+                    // The page is plain text in a tooltip, never markup or a link.
+                    <td
+                      title={
+                        typeof r.top_page === "string"
+                          ? `${t("rank.conversions.page")}: ${r.top_page}`
+                          : undefined
+                      }
+                    >
+                      {typeof r.conversions === "number" ? num(r.conversions) : "—"}
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
           </table>
           <p className="hint">{t("rank.delta.hint")}</p>
+          {showConversions && <p className="hint">{t("rank.conversions.hint")}</p>}
         </div>
       )}
 
-      <p className="hint">{t("rank.no_conversions")}</p>
+      {source === "none" && <p className="hint">{t("rank.no_conversions")}</p>}
     </div>
   );
 }
