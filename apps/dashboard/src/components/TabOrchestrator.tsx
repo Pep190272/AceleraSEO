@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import EngineStatus from "@/components/EngineStatus";
 import LangToggle from "@/components/LangToggle";
@@ -8,17 +8,21 @@ import TabButton from "@/components/TabButton";
 import { useT } from "@/lib/i18n";
 import { TAB_CONFIG, type Tab } from "@/lib/tab-config";
 
-export default function TabOrchestrator() {
-  const { t } = useT();
-  const [activeTab, setActiveTab] = useState<Tab>("strategy");
+const DEFAULT_TAB: Tab = "strategy";
 
+interface TabOrchestratorProps {
+  /** Raw `?tab=<id>` from the URL, read on the server. Unknown ids fall back to the default. */
+  requestedTab?: string;
+}
+
+export default function TabOrchestrator({ requestedTab }: TabOrchestratorProps) {
+  const { t } = useT();
   // Deep link: `?tab=<id>` opens that tab. Returning from Google consent lands on
-  // `?tab=settings`. Read after mount so the server render stays deterministic.
-  useEffect(() => {
-    const requested = new URLSearchParams(window.location.search).get("tab");
-    const match = TAB_CONFIG.find((entry) => entry.id === requested);
-    if (match) setActiveTab(match.id);
-  }, []);
+  // `?tab=settings`. The id arrives from the server as a prop, so the server render
+  // and hydration agree and the requested tab paints first, with no flash.
+  const [activeTab, setActiveTab] = useState<Tab>(
+    () => TAB_CONFIG.find((entry) => entry.id === requestedTab)?.id ?? DEFAULT_TAB,
+  );
 
   // One ref per tab button so we can move focus on keyboard navigation.
   const tabRefs = useRef<Array<HTMLButtonElement | null>>(

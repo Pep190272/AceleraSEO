@@ -3,15 +3,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import DeclarativeBase, sessionmaker
+from sqlalchemy import Engine, create_engine
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 
 class Base(DeclarativeBase):
     pass
 
 
-def make_engine(database_url: str):
+def make_engine(database_url: str) -> Engine:
     if database_url.startswith("sqlite"):
         # Ensure the data/ dir exists for file-based SQLite.
         db_path = database_url.split("///", 1)[-1]
@@ -21,7 +21,7 @@ def make_engine(database_url: str):
     return create_engine(database_url, connect_args=connect_args, future=True)
 
 
-def make_session_factory(database_url: str):
+def make_session_factory(database_url: str) -> sessionmaker[Session]:
     engine = make_engine(database_url)
     Base.metadata.create_all(engine)
     return sessionmaker(bind=engine, expire_on_commit=False, future=True)
