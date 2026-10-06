@@ -87,14 +87,17 @@ export type RankingRow = {
   impressions: number;
   position: number;
   previous_position: number | null;
+  // Impressions in the previous window; 0 when the query was not there.
+  previous_impressions: number;
   // current − previous; positive means the query slipped. null = not in the
-  // previous window.
+  // previous window, or below min_impressions there (too little data to compare).
   position_delta: number | null;
 };
 
 export type RankingsReport = {
   site_url: string;
   window: { start: string; end: string; days: number };
+  min_impressions: number;
   first_observed_on: string | null;
   last_observed_on: string | null;
   rows: RankingRow[];

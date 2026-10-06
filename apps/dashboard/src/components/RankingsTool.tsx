@@ -8,6 +8,10 @@ import type { GoogleStatus, RankingsReport } from "@/lib/types/api";
 
 const WINDOWS = [7, 28, 90] as const;
 type WindowDays = (typeof WINDOWS)[number];
+// Below a handful of impressions the average position swings wildly, so the
+// default hides those queries. 0 shows everything.
+const MIN_IMPRESSIONS = [0, 10, 50, 100] as const;
+type MinImpressions = (typeof MIN_IMPRESSIONS)[number];
 
 type SettingsSummary = { fields: { key: string; is_set: boolean }[] };
 
@@ -22,18 +26,21 @@ type View =
 export default function RankingsTool() {
   const { lang, t } = useT();
   const [days, setDays] = useState<WindowDays>(28);
+  const [minImpressions, setMinImpressions] = useState<MinImpressions>(10);
   const [view, setView] = useState<View>({ kind: "loading" });
 
-  // The fetch depends on `days` only: labels and number formats are applied at
-  // render time, so a language switch re-renders the same data without a request.
-  // `ignore` drops any response that lands after `days` changed or the tab unmounted.
+  // The fetch depends on the two filters only: labels and number formats are applied
+  // at render time, so a language switch re-renders the same data without a request.
+  // `ignore` drops any response that lands after a filter changed or the tab unmounted.
   useEffect(() => {
     let ignore = false;
     setView({ kind: "loading" });
     Promise.allSettled([
       apiFetch<SettingsSummary>("/api/settings"),
       apiFetch<GoogleStatus>("/api/auth/google/status"),
-      apiFetch<RankingsReport>(`/api/sense/rankings?days=${days}`),
+      apiFetch<RankingsReport>(
+        `/api/sense/rankings?days=${days}&min_impressions=${minImpressions}`,
+      ),
     ]).then(([settings, google, rankings]) => {
       if (ignore) return;
       const siteUrlSet =
@@ -55,7 +62,7 @@ export default function RankingsTool() {
     return () => {
       ignore = true;
     };
-  }, [days]);
+  }, [days, minImpressions]);
 
   const num = (n: number) => n.toLocaleString(lang);
   const pos = (n: number) =>
@@ -65,23 +72,43 @@ export default function RankingsTool() {
     <div className="panel">
       <p className="hint" style={{ marginTop: 0 }}>{t("rank.lead")}</p>
 
-      <div style={{ maxWidth: "16rem", marginBottom: "1rem" }}>
-        <label htmlFor="rank-window">{t("rank.window")}</label>
-        <select
-          id="rank-window"
-          className="select"
-          value={days}
-          onChange={(e) => {
-            const next = WINDOWS.find((w) => w === Number(e.target.value));
-            if (next !== undefined) setDays(next);
-          }}
-        >
-          {WINDOWS.map((w) => (
-            <option key={w} value={w}>
-              {w} {t("rank.days")}
-            </option>
-          ))}
-        </select>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
+        <div style={{ flex: "1 1 12rem", maxWidth: "16rem" }}>
+          <label htmlFor="rank-window">{t("rank.window")}</label>
+          <select
+            id="rank-window"
+            className="select"
+            value={days}
+            onChange={(e) => {
+              const next = WINDOWS.find((w) => w === Number(e.target.value));
+              if (next !== undefined) setDays(next);
+            }}
+          >
+            {WINDOWS.map((w) => (
+              <option key={w} value={w}>
+                {w} {t("rank.days")}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div style={{ flex: "1 1 12rem", maxWidth: "16rem" }}>
+          <label htmlFor="rank-min-impressions">{t("rank.min_impressions")}</label>
+          <select
+            id="rank-min-impressions"
+            className="select"
+            value={minImpressions}
+            onChange={(e) => {
+              const next = MIN_IMPRESSIONS.find((m) => m === Number(e.target.value));
+              if (next !== undefined) setMinImpressions(next);
+            }}
+          >
+            {MIN_IMPRESSIONS.map((m) => (
+              <option key={m} value={m}>
+                {num(m)}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       {view.kind === "loading" && <p className="hint">{t("rank.loading")}</p>}
@@ -90,7 +117,11 @@ export default function RankingsTool() {
 
       {view.kind === "ready" && view.report.rows.length === 0 && (
         <p className="hint">
-          {view.google && !view.google.connected ? t("rank.not_connected") : t("rank.empty")}
+          {view.google && !view.google.connected
+            ? t("rank.not_connected")
+            : view.report.last_observed_on !== null && view.report.min_impressions > 0
+              ? t("rank.empty_filtered")
+              : t("rank.empty")}
         </p>
       )}
 
@@ -117,6 +148,11 @@ export default function RankingsTool() {
                   <td>{num(r.impressions)}</td>
                   <td>{pos(r.position)}</td>
                   <td
+                    title={
+                      r.position_delta === null && r.previous_impressions > 0
+                        ? t("rank.thin")
+                        : undefined
+                    }
                     style={{
                       color:
                         r.position_delta === null || r.position_delta === 0
@@ -126,9 +162,11 @@ export default function RankingsTool() {
                             : "var(--accent)",
                     }}
                   >
-                    {r.position_delta === null
-                      ? t("rank.new")
-                      : `${r.position_delta > 0 ? "+" : ""}${pos(r.position_delta)}`}
+                    {r.position_delta !== null
+                      ? `${r.position_delta > 0 ? "+" : ""}${pos(r.position_delta)}`
+                      : r.previous_impressions === 0
+                        ? t("rank.new")
+                        : "—"}
                   </td>
                 </tr>
               ))}
