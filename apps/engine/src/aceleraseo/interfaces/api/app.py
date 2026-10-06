@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import socket
 from dataclasses import asdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from urllib.parse import urlencode
 from zoneinfo import ZoneInfo
 
@@ -24,7 +24,7 @@ from ...infrastructure.google import oauth
 from ...infrastructure.google.gsc_adapter import GSCRankingProvider
 from ...infrastructure.llm.factory import make_analytics, resolve_conversions_source
 from ...infrastructure.persistence.db import make_session_factory
-from ...infrastructure.persistence.repository import RankingRepository
+from ...infrastructure.persistence.repository import ConversionRepository, RankingRepository
 from ...infrastructure.providers.crawler import HttpxCrawler
 from ...infrastructure.providers.wordpress_conversions import WordPressConversionsError
 from ...infrastructure.providers.url_safety import UnsafeURLError, ensure_public_url
@@ -215,12 +215,19 @@ def sense_run(days: int = Query(90, ge=1, le=480)) -> dict:
             "WordPress conversions are selected but the endpoint URL or key is missing. "
             "Set them in the Settings tab → Conversions.",
         )
+    if source == "ga4" and analytics is None:
+        raise HTTPException(
+            400,
+            "GA4 conversions are selected but the GA4 property ID is missing. "
+            "Set it in the Settings tab → Google, or choose another conversions source.",
+        )
 
     session_factory = make_session_factory(settings.database_url)
     use_case = CollectSignals(
         rankings=GSCRankingProvider(creds),
         analytics=analytics,
         repository=RankingRepository(session_factory),
+        conversions=ConversionRepository(session_factory),
     )
     try:
         result = use_case.execute(
@@ -331,8 +338,11 @@ def sense_rankings(
     settings = get_settings()
     if not settings.gsc_site_url:
         raise HTTPException(400, "GSC_SITE_URL not set in .env.")
-    repo = RankingRepository(make_session_factory(settings.database_url))
-    report = ReportRankings(repo).execute(
+    session_factory = make_session_factory(settings.database_url)
+    # With no conversions source, stored snapshots are not shown: they would be stale.
+    source = resolve_conversions_source(settings)
+    conversions = ConversionRepository(session_factory) if source != "none" else None
+    report = ReportRankings(RankingRepository(session_factory), conversions).execute(
         settings.gsc_site_url, _search_console_today(), days, limit, min_impressions
     )
     return {
@@ -345,6 +355,14 @@ def sense_rankings(
         "last_observed_on": report.last_observed_on.isoformat()
         if report.last_observed_on else None,
         "rows": [asdict(r) for r in report.rows],
+        # none | ga4 | wordpress. Rows carry conversions=null until one is collected.
+        "conversions_source": source,
+        "conversions_window": {
+            "start": (report.conversions_end
+                      - timedelta(days=report.conversions_days - 1)).isoformat(),
+            "end": report.conversions_end.isoformat(),
+            "days": report.conversions_days,
+        } if report.conversions_end and report.conversions_days else None,
     }
 
 

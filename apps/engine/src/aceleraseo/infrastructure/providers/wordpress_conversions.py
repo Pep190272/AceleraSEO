@@ -12,10 +12,14 @@ is fixed in docs/plans/first-party-conversions.md:
 from __future__ import annotations
 
 from datetime import date
-from urllib.parse import urlsplit
 
 import httpx
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, ValidationError
+
+from ...domain.models import ConversionCount, ConversionSnapshot
+from ...domain.paths import normalize_path
+
+__all__ = ["WordPressConversionsError", "WordPressConversionsProvider", "normalize_path"]
 
 WP_CONVERSIONS_TIMEOUT_SECONDS = 30.0
 
@@ -34,7 +38,8 @@ class WordPressConversionsError(Exception):
 class ConversionRow(BaseModel):
     path: str
     type: str
-    count: int = Field(ge=0)
+    # Strict: JSON true or "2" is outside the contract, not a count.
+    count: StrictInt = Field(ge=0)
 
 
 class ConversionsResponse(BaseModel):
@@ -44,18 +49,6 @@ class ConversionsResponse(BaseModel):
     to: date
     rows: list[ConversionRow]
 
-
-def normalize_path(value: str) -> str:
-    """Reduce a URL or path to '/path/': leading and trailing slash, no query or fragment.
-
-    GSC reports full URLs and the endpoint reports paths; both meet on this form.
-    """
-    path = urlsplit(value.strip()).path or "/"
-    if not path.startswith("/"):
-        path = "/" + path
-    if not path.endswith("/"):
-        path += "/"
-    return path
 
 
 class WordPressConversionsProvider:
@@ -78,16 +71,30 @@ class WordPressConversionsProvider:
 
         property_id is a GA4 concept; the endpoint URL already identifies the site.
         """
+        totals = self.fetch_conversion_rows(days).totals()
+        return {path: float(count) for path, count in totals.items()}
+
+    def fetch_conversion_rows(self, days: int) -> ConversionSnapshot:
+        """Counts per normalised path and type, for the window the endpoint reported.
+
+        '/a' and '/a/' normalise to one path, so their counts are merged per type.
+        """
         body = self._get(days)
-        result: dict[str, float] = {}
+        counts: dict[tuple[str, str], int] = {}
         for row in body.rows:
-            path = normalize_path(row.path)
-            result[path] = result.get(path, 0.0) + float(row.count)
-        return result
+            key = (normalize_path(row.path), row.type)
+            counts[key] = counts.get(key, 0) + row.count
+        return ConversionSnapshot(
+            window_end=body.to,
+            window_days=(body.to - body.from_).days + 1,
+            rows=[ConversionCount(path, kind, count) for (path, kind), count in counts.items()],
+        )
 
     def _get(self, days: int) -> ConversionsResponse:
         try:
-            with httpx.Client(timeout=self._timeout, transport=self._transport) as client:
+            with httpx.Client(
+                timeout=self._timeout, transport=self._transport, follow_redirects=False
+            ) as client:
                 resp = client.get(self._url, params={"days": days}, headers=self._headers)
         except httpx.TimeoutException as exc:
             raise WordPressConversionsError(
@@ -98,6 +105,14 @@ class WordPressConversionsProvider:
                 "Could not reach the WordPress conversions endpoint. Check the URL.", 502
             ) from exc
 
+        if 300 <= resp.status_code < 400:
+            # Redirects are not followed: the key must not travel to another URL.
+            raise WordPressConversionsError(
+                f"The WordPress conversions endpoint redirected (HTTP {resp.status_code}). "
+                "Set its final URL in Settings > Conversions (check https and the "
+                "trailing slash).",
+                502,
+            )
         if resp.status_code in (401, 403):
             raise WordPressConversionsError(
                 "WordPress rejected the API key. Check it in Settings > Conversions.", 502

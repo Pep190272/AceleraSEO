@@ -5,10 +5,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 import aceleraseo.interfaces.api.app as app_module
-from aceleraseo.domain.models import RankingSignal
+from aceleraseo.domain.models import ConversionCount, ConversionSnapshot, RankingSignal
 from aceleraseo.infrastructure.config import Settings
 from aceleraseo.infrastructure.persistence.db import make_session_factory
-from aceleraseo.infrastructure.persistence.repository import RankingRepository
+from aceleraseo.infrastructure.persistence.repository import (
+    ConversionRepository,
+    RankingRepository,
+)
 
 TOKEN = {"X-Engine-Token": "local-test-token"}
 
@@ -18,10 +21,10 @@ def setup(tmp_path, monkeypatch):
     monkeypatch.delenv("DEMO_MODE", raising=False)
     monkeypatch.setenv("ENGINE_API_TOKEN", "local-test-token")
 
-    def configure(site_url="sc-domain:example.com"):
+    def configure(site_url="sc-domain:example.com", **values):
         # A file, not :memory: — every request builds a fresh engine.
         settings = Settings(_env_file=None, gsc_site_url=site_url,
-                            database_url=f"sqlite:///{tmp_path}/t.db")
+                            database_url=f"sqlite:///{tmp_path}/t.db", **values)
         monkeypatch.setattr(app_module, "get_settings", lambda: settings)
         return settings
 
@@ -65,7 +68,47 @@ def test_returns_rows_with_deltas(setup):
     assert body["min_impressions"] == 10
     assert body["rows"] == [{"query": "seo", "clicks": 4, "impressions": 40,
                              "position": 3.0, "previous_position": 5.0,
-                             "previous_impressions": 40, "position_delta": -2.0}]
+                             "previous_impressions": 40, "position_delta": -2.0,
+                             "top_page": None, "conversions": None}]
+    assert body["conversions_source"] == "none" and body["conversions_window"] is None
+
+
+def _seed_conversions(settings, last, snapshot_rows):
+    factory = make_session_factory(settings.database_url)
+    RankingRepository(factory).save_many(settings.gsc_site_url, [
+        RankingSignal("seo", "https://example.com/espa%C3%B1a", 3.0, 9, 90, 0.1, last),
+        RankingSignal("seo", "https://example.com/other/", 7.0, 1, 50, 0.02, last),
+        RankingSignal("quiet", "https://example.com/blog/", 4.0, 2, 40, 0.05, last),
+    ])
+    ConversionRepository(factory).save_snapshot(
+        settings.gsc_site_url, ConversionSnapshot(last, 90, snapshot_rows))
+
+
+def test_rows_carry_the_conversions_of_the_top_page(setup):
+    settings = setup(conversions_source="wordpress")
+    last = date.today() - timedelta(days=3)
+    _seed_conversions(settings, last, [
+        ConversionCount("/españa/", "form", 2), ConversionCount("/españa/", "whatsapp", 1),
+        ConversionCount("/other/", "form", 5),
+    ])
+    body = TestClient(app_module.app).get("/sense/rankings?days=7", headers=TOKEN).json()
+    rows = {r["query"]: r for r in body["rows"]}
+    # /other/ converts more, but "seo" lands on /españa/ (most clicks): 2 + 1 there.
+    assert rows["seo"]["top_page"] == "https://example.com/espa%C3%B1a"
+    assert rows["seo"]["conversions"] == 3
+    assert rows["quiet"]["conversions"] == 0  # a real zero, not missing data
+    assert body["conversions_source"] == "wordpress"
+    assert body["conversions_window"] == {
+        "start": (last - timedelta(days=89)).isoformat(), "end": last.isoformat(), "days": 90}
+
+
+def test_conversions_are_hidden_when_the_source_is_none(setup):
+    settings = setup()
+    last = date.today() - timedelta(days=3)
+    _seed_conversions(settings, last, [ConversionCount("/blog/", "form", 1)])
+    body = TestClient(app_module.app).get("/sense/rankings?days=7", headers=TOKEN).json()
+    assert {r["conversions"] for r in body["rows"]} == {None}
+    assert body["conversions_window"] is None
 
 
 def test_min_impressions_filters_rows_and_zero_keeps_them(setup):

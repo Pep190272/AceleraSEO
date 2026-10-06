@@ -7,8 +7,15 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
+from datetime import date
+from typing import Protocol
 
-from ..domain.ports import AnalyticsProvider, RankingProvider
+from ..domain.models import ConversionCount, ConversionSnapshot
+from ..domain.paths import normalize_path
+from ..domain.ports import AnalyticsProvider, ConversionRowsProvider, RankingProvider
+
+# Type stored for a source that only reports per-page totals (GA4 key events).
+TOTALS_ONLY_TYPE = "ga4_key_event"
 
 logger = logging.getLogger(__name__)
 
@@ -22,23 +29,31 @@ class SenseResult:
     conversion_rows: int = 0
 
 
+class ConversionWriter(Protocol):
+    def save_snapshot(self, site_url: str, snapshot: ConversionSnapshot) -> int: ...
+
+
 class CollectSignals:
     def __init__(
         self,
         rankings: RankingProvider,
         analytics: AnalyticsProvider | None,
         repository,
+        conversions: ConversionWriter | None = None,
     ):
         self._rankings = rankings
         # None = no conversions source configured (see make_analytics).
         self._analytics = analytics
         self._repo = repository
+        # None = conversions are counted but not persisted.
+        self._conversions = conversions
 
     def execute(
         self,
         site_url: str,
         property_id: str,
         days: int = 90,
+        today: date | None = None,
     ) -> SenseResult:
         signals = self._rankings.fetch_rankings(site_url, days)
         new_rows = self._repo.save_many(site_url, signals)
@@ -46,7 +61,10 @@ class CollectSignals:
         pages_with_conversions = 0
         rows = 0
         if self._analytics is not None:
-            conversions = self._analytics.fetch_conversions(property_id, days)
+            snapshot = _snapshot(self._analytics, property_id, days, today or date.today())
+            if self._conversions is not None:
+                self._conversions.save_snapshot(site_url, snapshot)
+            conversions = snapshot.totals()
             pages_with_conversions = sum(1 for v in conversions.values() if v > 0)
             rows = len(conversions)
             logger.info(
@@ -72,3 +90,17 @@ class CollectSignals:
             pages_with_conversions=pages_with_conversions,
             conversion_rows=rows,
         )
+
+
+def _snapshot(
+    analytics: AnalyticsProvider, property_id: str, days: int, today: date
+) -> ConversionSnapshot:
+    """Per-type rows when the source has them, else its per-page totals as one type."""
+    if isinstance(analytics, ConversionRowsProvider):
+        return analytics.fetch_conversion_rows(days)
+    totals: dict[str, int] = {}
+    for page, value in analytics.fetch_conversions(property_id, days).items():
+        path = normalize_path(page)
+        totals[path] = totals.get(path, 0) + round(value)
+    rows = [ConversionCount(path, TOTALS_ONLY_TYPE, n) for path, n in totals.items()]
+    return ConversionSnapshot(window_end=today, window_days=days, rows=rows)

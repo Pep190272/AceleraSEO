@@ -1,4 +1,6 @@
 """WordPress conversions provider and source selection, against httpx.MockTransport only."""
+from datetime import date
+
 import httpx
 import pytest
 
@@ -38,10 +40,17 @@ def test_sums_every_type_per_normalised_path_and_sends_key_and_days():
     assert seen == {"key": "test-key", "days": "90"}
 
 
+def test_rows_keep_the_type_and_the_reported_window():
+    snapshot = _provider(lambda request: httpx.Response(200, json=BODY)).fetch_conversion_rows(90)
+    assert (snapshot.window_end, snapshot.window_days) == (date(2026, 10, 6), 91)
+    assert {(r.path, r.type, r.count) for r in snapshot.rows} == {
+        ("/landing/", "form", 2), ("/landing/", "whatsapp", 1), ("/", "whatsapp", 0)}
+
+
 @pytest.mark.parametrize(
     "status,expected,fragment",
-    [(401, 502, "rejected the API key"), (422, 502, "HTTP 422"), (429, 429, "rate limiting"),
-     (500, 502, "HTTP 500")],
+    [(401, 502, "rejected the API key"), (403, 502, "rejected the API key"),
+     (422, 502, "HTTP 422"), (429, 429, "rate limiting"), (500, 502, "HTTP 500")],
 )
 def test_http_errors_become_a_typed_error(status, expected, fragment):
     provider = _provider(lambda request: httpx.Response(status, text="nope"))
@@ -49,6 +58,20 @@ def test_http_errors_become_a_typed_error(status, expected, fragment):
         provider.fetch_conversions("", 30)
     assert err.value.status_code == expected
     assert fragment in str(err.value)
+
+
+def test_redirects_are_not_followed_and_hint_the_final_url():
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(str(request.url))
+        return httpx.Response(301, headers={"Location": URL + "/"})
+
+    with pytest.raises(WordPressConversionsError) as err:
+        _provider(handler).fetch_conversions("", 30)
+    assert len(calls) == 1
+    assert err.value.status_code == 502
+    assert "final URL" in str(err.value) and "trailing slash" in str(err.value)
 
 
 def test_timeout_is_504():
@@ -72,7 +95,11 @@ def test_connection_failure_is_502():
 @pytest.mark.parametrize(
     "content",
     [b"<html>cached page</html>", b'{"rows": []}',
-     b'{"from": "2026-07-08", "to": "2026-10-06", "rows": [{"path": "/", "count": -1}]}'],
+     b'{"from": "2026-07-08", "to": "2026-10-06", "rows": [{"path": "/", "count": -1}]}',
+     b'{"from": "2026-07-08", "to": "2026-10-06",'
+     b' "rows": [{"path": "/", "type": "form", "count": true}]}',
+     b'{"from": "2026-07-08", "to": "2026-10-06",'
+     b' "rows": [{"path": "/", "type": "form", "count": "2"}]}'],
 )
 def test_malformed_body_is_502(content):
     provider = _provider(lambda request: httpx.Response(200, content=content))
@@ -84,7 +111,9 @@ def test_malformed_body_is_502(content):
 @pytest.mark.parametrize(
     "value,expected",
     [("/a/", "/a/"), ("/a", "/a/"), ("a", "/a/"), ("", "/"), ("/a/?utm=x#top", "/a/"),
-     ("https://example.com/a/b?x=1", "/a/b/"), ("https://example.com", "/")],
+     ("https://example.com/a/b?x=1", "/a/b/"), ("https://example.com", "/"),
+     ("/espa%C3%B1a", "/espa\u00f1a/"), ("https://example.com/espa%C3%B1a/", "/espa\u00f1a/"),
+     ("/espa\u00f1a/", "/espa\u00f1a/")],
 )
 def test_normalize_path(value, expected):
     assert normalize_path(value) == expected
@@ -110,6 +139,10 @@ def test_make_analytics_selects_wordpress_only_with_url_and_key():
     assert make_analytics(_settings(**wp, wp_conversions_key="YOUR_KEY_HERE"), None) is None
     provider = make_analytics(_settings(**wp, wp_conversions_key="real-key"), None)
     assert isinstance(provider, WordPressConversionsProvider)
+
+
+def test_make_analytics_needs_a_property_id_for_ga4():
+    assert make_analytics(_settings(conversions_source="ga4"), None) is None
 
 
 def test_make_analytics_returns_none_without_a_source():

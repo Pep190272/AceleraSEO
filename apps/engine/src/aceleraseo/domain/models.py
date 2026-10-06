@@ -57,6 +57,29 @@ class QueryRanking:
 
 
 @dataclass(frozen=True)
+class ConversionCount:
+    """Conversions of one type on one landing path (normalised) over a window."""
+    path: str
+    type: str
+    count: int
+
+
+@dataclass(frozen=True)
+class ConversionSnapshot:
+    """What a conversions source reported for the ``window_days`` ending at ``window_end``."""
+    window_end: date
+    window_days: int
+    rows: list[ConversionCount] = field(default_factory=list)
+
+    def totals(self) -> dict[str, int]:
+        """Conversions of every type, per path."""
+        result: dict[str, int] = {}
+        for row in self.rows:
+            result[row.path] = result.get(row.path, 0) + row.count
+        return result
+
+
+@dataclass(frozen=True)
 class Keyword:
     term: str
     search_volume: int

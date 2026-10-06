@@ -1,12 +1,13 @@
 """Ports — interfaces the application depends on. Adapters live in infrastructure/."""
 from __future__ import annotations
 
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from .models import (
     Action,
     BusinessProfile,
     CompetitorDomain,
+    ConversionSnapshot,
     CrawledPage,
     Keyword,
     RankingSignal,
@@ -22,8 +23,18 @@ class RankingProvider(Protocol):
 
 
 class AnalyticsProvider(Protocol):
-    """Read conversions/revenue — implemented by the GA4 adapter."""
+    """Read conversions per landing page — GA4 and WordPress adapters."""
     def fetch_conversions(self, property_id: str, days: int) -> dict[str, float]: ...
+
+
+@runtime_checkable
+class ConversionRowsProvider(Protocol):
+    """Conversions split by type, with the window the source reported.
+
+    Optional next to AnalyticsProvider: a source that implements it is persisted
+    per type; one that does not is persisted from its per-page totals.
+    """
+    def fetch_conversion_rows(self, days: int) -> ConversionSnapshot: ...
 
 
 class MarketProvider(Protocol):
