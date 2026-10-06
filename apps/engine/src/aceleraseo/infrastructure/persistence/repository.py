@@ -77,12 +77,19 @@ class RankingRepository:
             return first, last
 
     def summarize_by_query(
-        self, site_url: str, start: date, end: date, limit: int | None = None
+        self,
+        site_url: str,
+        start: date,
+        end: date,
+        limit: int | None = None,
+        min_impressions: int = 0,
     ) -> list[QueryRanking]:
         """Aggregate [start, end] per query, most clicks first.
 
         Position is weighted by impressions, so a page seen once at position 90
-        does not outweigh one seen a thousand times at position 3.
+        does not outweigh one seen a thousand times at position 3. Queries with
+        fewer than ``min_impressions`` impressions in the window are dropped in
+        SQL, before ``limit``, so the limit returns the top queries that qualify.
         """
         clicks = func.sum(RankingSignalRow.clicks)
         impressions = func.sum(RankingSignalRow.impressions)
@@ -102,6 +109,8 @@ class RankingRepository:
             .group_by(RankingSignalRow.query)
             .order_by(clicks.desc(), impressions.desc(), RankingSignalRow.query)
         )
+        if min_impressions > 0:
+            stmt = stmt.having(impressions >= min_impressions)
         if limit is not None:
             stmt = stmt.limit(limit)
         with self._session_factory() as session:

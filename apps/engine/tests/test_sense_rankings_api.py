@@ -62,19 +62,38 @@ def test_returns_rows_with_deltas(setup):
     body = resp.json()
     assert body["window"] == {"start": (last - timedelta(days=6)).isoformat(),
                               "end": last.isoformat(), "days": 7}
+    assert body["min_impressions"] == 10
     assert body["rows"] == [{"query": "seo", "clicks": 4, "impressions": 40,
                              "position": 3.0, "previous_position": 5.0,
-                             "position_delta": -2.0}]
+                             "previous_impressions": 40, "position_delta": -2.0}]
 
 
-@pytest.mark.parametrize("params", ["days=0", "days=241", "limit=0", "limit=501"])
+def test_min_impressions_filters_rows_and_zero_keeps_them(setup):
+    settings = setup()
+    last = date.today() - timedelta(days=3)
+    RankingRepository(make_session_factory(settings.database_url)).save_many(
+        settings.gsc_site_url, [
+            RankingSignal("seo", "/", 3.0, 4, 40, 0.1, last),
+            RankingSignal("blip", "/", 9.0, 9, 3, 0.1, last),
+        ])
+    client = TestClient(app_module.app)
+    filtered = client.get("/sense/rankings?days=7", headers=TOKEN).json()
+    assert [r["query"] for r in filtered["rows"]] == ["seo"]
+    unfiltered = client.get("/sense/rankings?days=7&min_impressions=0", headers=TOKEN).json()
+    assert unfiltered["min_impressions"] == 0
+    assert [r["query"] for r in unfiltered["rows"]] == ["blip", "seo"]
+
+
+@pytest.mark.parametrize("params", ["days=0", "days=241", "limit=0", "limit=501",
+                                    "min_impressions=-1", "min_impressions=10001"])
 def test_422_when_out_of_range(setup, params):
     setup()
     resp = TestClient(app_module.app).get(f"/sense/rankings?{params}", headers=TOKEN)
     assert resp.status_code == 422
 
 
-@pytest.mark.parametrize("params", ["days=240", "limit=500", "days=240&limit=500"])
+@pytest.mark.parametrize("params", ["days=240", "limit=500", "days=240&limit=500",
+                                    "min_impressions=0", "min_impressions=10000"])
 def test_inclusive_upper_bounds_are_accepted(setup, params):
     setup()
     resp = TestClient(app_module.app).get(f"/sense/rankings?{params}", headers=TOKEN)
