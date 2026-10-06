@@ -219,6 +219,8 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "set.sense.conversions": "páginas con conversiones",
       "set.sense.no_ga4":
         "No se recolectaron conversiones: falta el ID de propiedad de GA4 en Ajustes.",
+      "set.sense.ga4_no_data":
+        "GA4 recibió 0 datos en este periodo: comprueba que la etiqueta de Google está instalada en tu web.",
     },
     // Spanish settings field labels and hints, keyed by the engine's field key and
     // group. The engine's English text is the source; English shows it unchanged.
@@ -457,6 +459,8 @@ const NAMESPACED: Record<Lang, NamespacedDict> = {
       "set.sense.rankings_new": "new rows",
       "set.sense.conversions": "pages with conversions",
       "set.sense.no_ga4": "No conversions were collected: the GA4 property ID is missing in Settings.",
+      "set.sense.ga4_no_data":
+        "GA4 received no data in this period: check that the Google tag is installed on your site.",
     },
     // Empty on purpose: English shows the engine's own field text (see SettingsTool).
     setFields: {},

@@ -90,6 +90,9 @@ export default function SenseRunPanel({ demo, google, siteUrlSet }: Props) {
             </div>
           </div>
           {!data.ga4_configured && <p className="hint">{t("set.sense.no_ga4")}</p>}
+          {data.ga4_configured && data.ga4_rows === 0 && (
+            <p className="hint">{t("set.sense.ga4_no_data")}</p>
+          )}
         </div>
       )}
     </div>
