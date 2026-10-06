@@ -1,5 +1,5 @@
 """HTTP surface for GET /sense/rankings: guard, config gating, validation, shape."""
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -72,3 +72,30 @@ def test_422_when_out_of_range(setup, params):
     setup()
     resp = TestClient(app_module.app).get(f"/sense/rankings?{params}", headers=TOKEN)
     assert resp.status_code == 422
+
+
+@pytest.mark.parametrize("params", ["days=240", "limit=500", "days=240&limit=500"])
+def test_inclusive_upper_bounds_are_accepted(setup, params):
+    setup()
+    resp = TestClient(app_module.app).get(f"/sense/rankings?{params}", headers=TOKEN)
+    assert resp.status_code == 200
+
+
+def test_search_console_today_is_pacific_time():
+    # 05:00 UTC on 2 January is still 1 January in Los Angeles.
+    now = datetime(2026, 1, 2, 5, 0, tzinfo=UTC)
+    assert app_module._search_console_today(now) == date(2026, 1, 1)
+
+
+def test_window_clamps_to_pacific_today(setup, monkeypatch):
+    settings = setup()
+    pacific_today = date(2026, 1, 1)
+    RankingRepository(make_session_factory(settings.database_url)).save_many(
+        settings.gsc_site_url, [
+            RankingSignal("seo", "/", 3.0, 4, 40, 0.1, pacific_today),
+            RankingSignal("seo", "/", 3.0, 4, 40, 0.1, pacific_today + timedelta(days=1)),
+        ])
+    monkeypatch.setattr(app_module, "_search_console_today", lambda: pacific_today)
+    resp = TestClient(app_module.app).get("/sense/rankings?days=7", headers=TOKEN)
+    assert resp.status_code == 200
+    assert resp.json()["window"]["end"] == pacific_today.isoformat()
