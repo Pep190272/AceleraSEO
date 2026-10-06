@@ -4,7 +4,9 @@ from __future__ import annotations
 import logging
 import socket
 from dataclasses import asdict
+from datetime import date, datetime
 from urllib.parse import urlencode
+from zoneinfo import ZoneInfo
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import RedirectResponse
@@ -280,6 +282,16 @@ def sense_run(days: int = Query(90, ge=1, le=480)) -> dict:
     }
 
 
+# Search Console dates its data in Pacific time, so "today" for the rankings
+# window is today in Los Angeles, not in the server's local time zone.
+_SEARCH_CONSOLE_TZ = ZoneInfo("America/Los_Angeles")
+
+
+def _search_console_today(now: datetime | None = None) -> date:
+    """Today's date in the time zone Search Console reports in."""
+    return (now or datetime.now(_SEARCH_CONSOLE_TZ)).astimezone(_SEARCH_CONSOLE_TZ).date()
+
+
 @app.get("/sense/rankings", dependencies=_COSTLY)
 def sense_rankings(
     days: int = Query(28, ge=1, le=240),
@@ -289,15 +301,15 @@ def sense_rankings(
 
     Guarded by the token: it returns the client's search data.
     """
-    from datetime import date as _date
-
     from ...application.report import ReportRankings
 
     settings = get_settings()
     if not settings.gsc_site_url:
         raise HTTPException(400, "GSC_SITE_URL not set in .env.")
     repo = RankingRepository(make_session_factory(settings.database_url))
-    report = ReportRankings(repo).execute(settings.gsc_site_url, _date.today(), days, limit)
+    report = ReportRankings(repo).execute(
+        settings.gsc_site_url, _search_console_today(), days, limit
+    )
     return {
         "site_url": report.site_url,
         "window": {"start": report.start.isoformat(), "end": report.end.isoformat(),
