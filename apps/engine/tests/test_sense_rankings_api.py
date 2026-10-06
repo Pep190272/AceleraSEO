@@ -73,7 +73,7 @@ def test_returns_rows_with_deltas(setup):
     assert body["conversions_source"] == "none" and body["conversions_window"] is None
 
 
-def _seed_conversions(settings, last, snapshot_rows):
+def _seed_conversions(settings, last, snapshot_rows, source="wordpress"):
     factory = make_session_factory(settings.database_url)
     RankingRepository(factory).save_many(settings.gsc_site_url, [
         RankingSignal("seo", "https://example.com/espa%C3%B1a", 3.0, 9, 90, 0.1, last),
@@ -81,7 +81,7 @@ def _seed_conversions(settings, last, snapshot_rows):
         RankingSignal("quiet", "https://example.com/blog/", 4.0, 2, 40, 0.05, last),
     ])
     ConversionRepository(factory).save_snapshot(
-        settings.gsc_site_url, ConversionSnapshot(last, 90, snapshot_rows))
+        settings.gsc_site_url, ConversionSnapshot(last, 90, source, snapshot_rows))
 
 
 def test_rows_carry_the_conversions_of_the_top_page(setup):
@@ -109,6 +109,17 @@ def test_paths_absent_from_search_console_never_surface(setup):
     resp = TestClient(app_module.app).get("/sense/rankings?days=7", headers=TOKEN)
     assert {r["conversions"] for r in resp.json()["rows"]} == {0}
     assert "made-up-path" not in resp.text and "99" not in resp.text
+
+
+def test_switching_source_shows_only_the_configured_one(setup):
+    settings = setup(conversions_source="wordpress")
+    last = date.today() - timedelta(days=3)
+    _seed_conversions(settings, last - timedelta(days=1), [ConversionCount("/blog/", "form", 1)])
+    # A newer GA4 snapshot from before the switch must not leak into the WordPress view.
+    _seed_conversions(settings, last, [ConversionCount("/blog/", "ga4_key_event", 40)], "ga4")
+    body = TestClient(app_module.app).get("/sense/rankings?days=7", headers=TOKEN).json()
+    assert {r["query"]: r["conversions"] for r in body["rows"]}["quiet"] == 1
+    assert body["conversions_window"]["end"] == (last - timedelta(days=1)).isoformat()
 
 
 def test_conversions_are_hidden_when_the_source_is_none(setup):

@@ -69,6 +69,7 @@ class ConversionSnapshot:
     """What a conversions source reported for the ``window_days`` ending at ``window_end``."""
     window_end: date
     window_days: int
+    source: str  # ga4 | wordpress: snapshots of different sources are never mixed
     rows: list[ConversionCount] = field(default_factory=list)
 
     def totals(self) -> dict[str, int]:

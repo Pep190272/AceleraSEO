@@ -60,6 +60,27 @@ def test_http_errors_become_a_typed_error(status, expected, fragment):
     assert fragment in str(err.value)
 
 
+def test_rows_of_an_unknown_type_are_dropped_and_counted(caplog):
+    bad_types = ["", "_empty", "ga4_key_event", "x" * 65, None, 3]
+    body = {"from": "2026-07-08", "to": "2026-10-06", "rows": [
+        {"path": "/ok/", "type": "phone", "count": 1},
+        *({"path": "/ok/", "type": t, "count": 7} for t in bad_types)]}
+    provider = _provider(lambda request: httpx.Response(200, json=body))
+    with caplog.at_level("WARNING"):
+        snapshot = provider.fetch_conversion_rows(90)
+    assert [(r.type, r.count) for r in snapshot.rows] == [("phone", 1)]
+    assert f"Dropped {len(bad_types)} WordPress conversion rows" in caplog.text
+
+
+def test_a_window_end_in_the_future_is_capped_at_today():
+    provider = WordPressConversionsProvider(
+        URL, "test-key", transport=httpx.MockTransport(lambda r: httpx.Response(200, json=BODY)),
+        today=lambda: date(2026, 10, 1))
+    snapshot = provider.fetch_conversion_rows(90)
+    assert (snapshot.window_end, snapshot.window_days) == (date(2026, 10, 1), 86)
+    assert snapshot.source == "wordpress"
+
+
 def test_rows_with_an_implausible_path_are_dropped_and_counted(caplog):
     bad_paths = ["landing/", "//evil.test/x","/a b/", "/a\\b/", "/a%0Ab/", "/tab\t", "/" + "x" * 255, 5, None]
     body = {"from": "2026-07-08", "to": "2026-10-06", "rows": [
@@ -107,14 +128,13 @@ def test_connection_failure_is_502():
 @pytest.mark.parametrize(
     "content",
     [b"<html>cached page</html>", b'{"rows": []}',
-     b'{"from": "2026-07-08", "to": "2026-10-06", "rows": [{"path": "/", "count": -1}]}',
+     b'{"from": "2026-07-08", "to": "2026-10-06",'
+     b' "rows": [{"path": "/", "type": "form", "count": -1}]}',
      b'{"from": "2026-07-08", "to": "2026-10-06",'
      b' "rows": [{"path": "/", "type": "form", "count": true}]}',
      b'{"from": "2026-07-08", "to": "2026-10-06",'
      b' "rows": [{"path": "/", "type": "form", "count": "2"}]}',
-     b'{"from": "2026-10-06", "to": "2026-07-08", "rows": []}',
-     b'{"from": "2026-07-08", "to": "2026-10-06",'
-     b' "rows": [{"path": "/", "type": "' + b"x" * 65 + b'", "count": 1}]}'],
+     b'{"from": "2026-10-06", "to": "2026-07-08", "rows": []}'],
 )
 def test_malformed_body_is_502(content):
     provider = _provider(lambda request: httpx.Response(200, content=content))

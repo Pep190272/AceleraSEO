@@ -107,4 +107,4 @@ def _snapshot(
         path = normalize_path(page)
         totals[path] = totals.get(path, 0) + round(value)
     rows = [ConversionCount(path, TOTALS_ONLY_TYPE, n) for path, n in totals.items()]
-    return ConversionSnapshot(window_end=today, window_days=days, rows=rows)
+    return ConversionSnapshot(window_end=today, window_days=days, source="ga4", rows=rows)

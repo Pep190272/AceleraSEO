@@ -36,12 +36,13 @@ class ConversionSignalRow(Base):
     """
     __tablename__ = "conversion_signals"
     __table_args__ = (
-        UniqueConstraint("site_url", "path", "type", "window_end",
+        UniqueConstraint("site_url", "source", "path", "type", "window_end",
                          name="uq_conversion_signal"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     site_url: Mapped[str] = mapped_column(String(512), index=True)
+    source: Mapped[str] = mapped_column(String(32))
     path: Mapped[str] = mapped_column(String(2048))
     type: Mapped[str] = mapped_column(String(64))
     window_end: Mapped[date] = mapped_column(Date, index=True)

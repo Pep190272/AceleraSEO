@@ -339,10 +339,11 @@ def sense_rankings(
     if not settings.gsc_site_url:
         raise HTTPException(400, "GSC_SITE_URL not set in .env.")
     session_factory = make_session_factory(settings.database_url)
-    # With no conversions source, stored snapshots are not shown: they would be stale.
+    # Only the configured source's snapshots are shown; with "none", no conversions.
     source = resolve_conversions_source(settings)
-    conversions = ConversionRepository(session_factory) if source != "none" else None
-    report = ReportRankings(RankingRepository(session_factory), conversions).execute(
+    report = ReportRankings(
+        RankingRepository(session_factory), ConversionRepository(session_factory), source
+    ).execute(
         settings.gsc_site_url, _search_console_today(), days, limit, min_impressions
     )
     return {

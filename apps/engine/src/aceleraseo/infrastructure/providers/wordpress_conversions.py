@@ -12,7 +12,9 @@ is fixed in docs/plans/first-party-conversions.md:
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from datetime import date
+from typing import Literal
 
 import httpx
 from pydantic import (
@@ -46,11 +48,14 @@ class WordPressConversionsError(Exception):
         self.status_code = status_code
 
 
+# The conversion types the contract defines; rows of any other type are dropped.
+CONVERSION_TYPES = ("form", "whatsapp", "phone")
+
+
 class ConversionRow(BaseModel):
     # Untrusted text: anyone can make the site record a conversion on a made-up path.
     path: str = Field(max_length=MAX_SOURCE_PATH_LENGTH)
-    # Bounded by the conversion_signals column, so a long value is a 502, not a DB error.
-    type: str = Field(min_length=1, max_length=64)
+    type: Literal["form", "whatsapp", "phone"]
     # Strict: JSON true or "2" is outside the contract, not a count.
     count: StrictInt = Field(ge=0)
 
@@ -68,17 +73,22 @@ class ConversionsResponse(BaseModel):
     from_: date = Field(alias="from")
     to: date
     rows: list[ConversionRow]
-    # Rows dropped for an implausible path. Set by the validator, never read from the body.
+    # Rows dropped for an implausible path or an unknown type. Set by the validator,
+    # never read from the body.
     dropped_rows: int = Field(default=0, exclude=True)
 
     @model_validator(mode="before")
     @classmethod
-    def _drop_implausible_paths(cls, data: object) -> object:
-        """Drop rows whose path is implausible instead of failing the whole collection."""
+    def _drop_untrusted_rows(cls, data: object) -> object:
+        """Drop rows with an implausible path or unknown type, not the whole collection."""
         if not isinstance(data, dict) or not isinstance(data.get("rows"), list):
             return data
         rows = data["rows"]
-        kept = [r for r in rows if not isinstance(r, dict) or is_plausible_path(r.get("path"))]
+        kept = [
+            r for r in rows
+            if not isinstance(r, dict)
+            or (is_plausible_path(r.get("path")) and r.get("type") in CONVERSION_TYPES)
+        ]
         return {**data, "rows": kept, "dropped_rows": len(rows) - len(kept)}
 
     @model_validator(mode="after")
@@ -97,11 +107,13 @@ class WordPressConversionsProvider:
         api_key: str,
         timeout: float = WP_CONVERSIONS_TIMEOUT_SECONDS,
         transport: httpx.BaseTransport | None = None,
+        today: Callable[[], date] = date.today,
     ) -> None:
         self._url = endpoint_url
         self._headers = {"X-API-Key": api_key, "Accept": "application/json"}
         self._timeout = timeout
         self._transport = transport
+        self._today = today
 
     def fetch_conversions(self, property_id: str, days: int) -> dict[str, float]:
         """Return {normalised path: conversions of every type} for the window.
@@ -114,21 +126,25 @@ class WordPressConversionsProvider:
     def fetch_conversion_rows(self, days: int) -> ConversionSnapshot:
         """Counts per normalised path and type, for the window the endpoint reported.
 
-        '/a' and '/a/' normalise to one path, so their counts are merged per type.
+        '/a' and '/a/' normalise to one path, so their counts are merged per type. The
+        window end is capped at the engine's today: a site clock running ahead must not
+        pin a snapshot in the future.
         """
         body = self._get(days)
         if body.dropped_rows:
             logger.warning(
-                "Dropped %d WordPress conversion rows with an implausible path.",
+                "Dropped %d WordPress conversion rows with an implausible path or unknown type.",
                 body.dropped_rows,
             )
         counts: dict[tuple[str, str], int] = {}
         for row in body.rows:
             key = (normalize_path(row.path), row.type)
             counts[key] = counts.get(key, 0) + row.count
+        end = min(body.to, self._today())
         return ConversionSnapshot(
-            window_end=body.to,
-            window_days=(body.to - body.from_).days + 1,
+            window_end=end,
+            window_days=max(1, (end - body.from_).days + 1),
+            source="wordpress",
             rows=[ConversionCount(path, kind, count) for (path, kind), count in counts.items()],
         )
 

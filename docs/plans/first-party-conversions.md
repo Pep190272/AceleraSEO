@@ -80,10 +80,13 @@ X-API-Key: <key>
 6. Docs: README, `docs/API-LIMITS.md`.
 
 ### PR B: `feat`, persist conversions and show them
-1. Table `conversion_signals` (site, path, type, window end, window days, count), unique on
-   site + path + type + window end. Saving a collection replaces that day's rows for the
-   site in one transaction: re-running is idempotent and a path that dropped out does not
-   linger. An empty collection stores one zero marker row so it still supersedes the last one.
+1. Table `conversion_signals` (site, source, path, type, window end, window days, count),
+   unique on site + source + path + type + window end. Saving a collection replaces that
+   day's rows for the site and source in one transaction: re-running is idempotent and a
+   path that dropped out does not linger. An empty collection stores one zero marker row
+   (empty path and type, which no source can produce) so it still supersedes the last one.
+   WordPress rows of a type other than `form`, `whatsapp` or `phone` are dropped and counted
+   in the log, and the endpoint's `to` is capped at the engine's today.
 2. Add conversions to `GET /sense/rankings` rows, joined on the normalised path.
 3. The Rankings tab gets a conversions column, and the "conversions are not collected" line
    is shown only when the source is `none`.
@@ -93,7 +96,7 @@ Decisions taken in PR B:
 | # | Decision | Why |
 |---|---|---|
 | D7 | A source may implement `ConversionRowsProvider.fetch_conversion_rows(days)` next to the `AnalyticsProvider` port; WordPress does. A source without it (GA4) is persisted from its per-page totals as type `ga4_key_event`, with today as the window end | The port stays compatible; GA4 keeps working and its counts are labelled for what they are |
-| D8 | Snapshots are read one at a time: the Rankings tab shows the latest collection, never a sum of collections | Collection windows overlap, so a sum would double count. The snapshot window ships as `conversions_window` |
+| D8 | Snapshots are read one at a time: the Rankings tab shows the latest collection of the configured source, never a sum of collections | Collection windows overlap, so a sum would double count. Filtering by source keeps GA4 counts from showing under a WordPress label after a switch. The snapshot window ships as `conversions_window` |
 | D9 | A ranking row is per query, conversions are per page. Each row gets the conversions (every type) of the query's top page: most clicks, then impressions, in the rankings window. The row names it in `top_page` | It is the page the query actually sends people to. Splitting a page's conversions across its queries would invent an attribution the data does not have, so queries sharing a page show the same count |
 | D10 | `conversions` is `null` when the source is `none` or nothing was collected; a page with no conversions is `0` | A missing number and a real zero must look different |
 | D11 | `normalize_path` moves to `domain/paths.py` and percent-decodes first; the GSC join and both sources use it | GSC sends `%C3%B1`, the site may send `ñ`: they are the same page |

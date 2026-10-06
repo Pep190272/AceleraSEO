@@ -41,7 +41,7 @@ class RankingReader(Protocol):
 
 
 class ConversionReader(Protocol):
-    def latest_snapshot(self, site_url: str) -> ConversionSnapshot | None: ...
+    def latest_snapshot(self, site_url: str, source: str) -> ConversionSnapshot | None: ...
 
 
 @dataclass(frozen=True)
@@ -74,11 +74,15 @@ class RankingsReport:
 
 class ReportRankings:
     def __init__(
-        self, repository: RankingReader, conversions: ConversionReader | None = None
+        self,
+        repository: RankingReader,
+        conversions: ConversionReader | None = None,
+        conversions_source: str = "none",
     ) -> None:
         self._repo = repository
-        # None = no conversions source: rows carry conversions=None.
-        self._conversions = conversions
+        # No reader or source "none": rows carry conversions=None.
+        self._conversions = conversions if conversions_source != "none" else None
+        self._source = conversions_source
 
     def execute(
         self,
@@ -109,7 +113,8 @@ class ReportRankings:
             )
         }
         snapshot = (
-            self._conversions.latest_snapshot(site_url) if self._conversions else None
+            self._conversions.latest_snapshot(site_url, self._source)
+            if self._conversions else None
         )
         totals = snapshot.totals() if snapshot else {}
         tops = (
