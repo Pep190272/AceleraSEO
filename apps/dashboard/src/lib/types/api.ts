@@ -99,9 +99,10 @@ export type RankingRow = {
   // previous window, or below min_impressions there (too little data to compare).
   position_delta: number | null;
   /** Search Console URL of the query's top page (most clicks); null without conversions. */
-  top_page: string | null;
+  // Optional: an engine older than the conversions column omits these fields.
+  top_page?: string | null;
   /** Conversions of the top page in the latest collection. null = none collected; 0 is real. */
-  conversions: number | null;
+  conversions?: number | null;
 };
 
 export type ConversionsSource = "none" | "ga4" | "wordpress";
@@ -113,7 +114,8 @@ export type RankingsReport = {
   first_observed_on: string | null;
   last_observed_on: string | null;
   rows: RankingRow[];
-  conversions_source: ConversionsSource;
+  /** Absent from an engine older than the conversions column. */
+  conversions_source?: ConversionsSource;
   /** Window of the conversions snapshot shown; null when none is collected. */
-  conversions_window: { start: string; end: string; days: number } | null;
+  conversions_window?: { start: string; end: string; days: number } | null;
 };

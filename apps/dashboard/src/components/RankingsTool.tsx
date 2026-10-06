@@ -72,8 +72,11 @@ export default function RankingsTool() {
   const num = (n: number) => n.toLocaleString(lang);
   const pos = (n: number) =>
     n.toLocaleString(lang, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
-  const source = view.kind === "ready" ? view.report.conversions_source : null;
-  const conversionsWindow = view.kind === "ready" ? view.report.conversions_window : null;
+  // An older engine sends no conversions_source: no column and no note, rather than a guess.
+  const source = view.kind === "ready" ? (view.report.conversions_source ?? null) : null;
+  const showConversions = source === "ga4" || source === "wordpress";
+  const conversionsWindow =
+    view.kind === "ready" ? (view.report.conversions_window ?? null) : null;
 
   return (
     <div className="panel">
@@ -137,7 +140,7 @@ export default function RankingsTool() {
           <p className="hint">
             {t("rank.period")} {view.report.window.start} → {view.report.window.end}
           </p>
-          {source !== null && source !== "none" && (
+          {(source === "ga4" || source === "wordpress") && (
             <p className="hint">
               {conversionsWindow
                 ? `${t("rank.conversions.period")} ${conversionsWindow.start} → ${conversionsWindow.end} (${SOURCE_LABEL[source]})`
@@ -152,7 +155,7 @@ export default function RankingsTool() {
                 <th>{t("rank.col.impressions")}</th>
                 <th>{t("rank.col.position")}</th>
                 <th title={t("rank.delta.hint")}>Δ</th>
-                {source !== "none" && (
+                {showConversions && (
                   <th title={t("rank.conversions.hint")}>{t("rank.col.conversions")}</th>
                 )}
               </tr>
@@ -185,16 +188,16 @@ export default function RankingsTool() {
                         ? t("rank.new")
                         : "—"}
                   </td>
-                  {source !== "none" && (
+                  {showConversions && (
                     // The page is plain text in a tooltip, never markup or a link.
                     <td
                       title={
-                        r.top_page !== null
+                        typeof r.top_page === "string"
                           ? `${t("rank.conversions.page")}: ${r.top_page}`
                           : undefined
                       }
                     >
-                      {r.conversions !== null ? num(r.conversions) : "—"}
+                      {typeof r.conversions === "number" ? num(r.conversions) : "—"}
                     </td>
                   )}
                 </tr>
@@ -202,7 +205,7 @@ export default function RankingsTool() {
             </tbody>
           </table>
           <p className="hint">{t("rank.delta.hint")}</p>
-          {source !== "none" && <p className="hint">{t("rank.conversions.hint")}</p>}
+          {showConversions && <p className="hint">{t("rank.conversions.hint")}</p>}
         </div>
       )}
 
