@@ -14,7 +14,7 @@ from __future__ import annotations
 from datetime import date
 
 import httpx
-from pydantic import BaseModel, ConfigDict, Field, StrictInt, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, StrictInt, ValidationError, model_validator
 
 from ...domain.models import ConversionCount, ConversionSnapshot
 from ...domain.paths import normalize_path
@@ -36,8 +36,9 @@ class WordPressConversionsError(Exception):
 
 
 class ConversionRow(BaseModel):
-    path: str
-    type: str
+    # Bounded by the conversion_signals columns, so a long value is a 502, not a DB error.
+    path: str = Field(max_length=2048)
+    type: str = Field(min_length=1, max_length=64)
     # Strict: JSON true or "2" is outside the contract, not a count.
     count: StrictInt = Field(ge=0)
 
@@ -48,6 +49,12 @@ class ConversionsResponse(BaseModel):
     from_: date = Field(alias="from")
     to: date
     rows: list[ConversionRow]
+
+    @model_validator(mode="after")
+    def _window_is_ordered(self) -> ConversionsResponse:
+        if self.to < self.from_:
+            raise ValueError("'to' is before 'from'")
+        return self
 
 
 

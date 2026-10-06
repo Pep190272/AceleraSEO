@@ -99,7 +99,10 @@ def test_connection_failure_is_502():
      b'{"from": "2026-07-08", "to": "2026-10-06",'
      b' "rows": [{"path": "/", "type": "form", "count": true}]}',
      b'{"from": "2026-07-08", "to": "2026-10-06",'
-     b' "rows": [{"path": "/", "type": "form", "count": "2"}]}'],
+     b' "rows": [{"path": "/", "type": "form", "count": "2"}]}',
+     b'{"from": "2026-10-06", "to": "2026-07-08", "rows": []}',
+     b'{"from": "2026-07-08", "to": "2026-10-06",'
+     b' "rows": [{"path": "/", "type": "' + b"x" * 65 + b'", "count": 1}]}'],
 )
 def test_malformed_body_is_502(content):
     provider = _provider(lambda request: httpx.Response(200, content=content))

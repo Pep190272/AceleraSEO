@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Protocol
 
-from ..domain.models import ConversionCount, ConversionSnapshot
+from ..domain.models import ConversionCount, ConversionSnapshot, RankingSignal
 from ..domain.paths import normalize_path
 from ..domain.ports import AnalyticsProvider, ConversionRowsProvider, RankingProvider
 
@@ -29,6 +29,10 @@ class SenseResult:
     conversion_rows: int = 0
 
 
+class RankingWriter(Protocol):
+    def save_many(self, site_url: str, signals: list[RankingSignal]) -> int: ...
+
+
 class ConversionWriter(Protocol):
     def save_snapshot(self, site_url: str, snapshot: ConversionSnapshot) -> int: ...
 
@@ -38,9 +42,9 @@ class CollectSignals:
         self,
         rankings: RankingProvider,
         analytics: AnalyticsProvider | None,
-        repository,
+        repository: RankingWriter,
         conversions: ConversionWriter | None = None,
-    ):
+    ) -> None:
         self._rankings = rankings
         # None = no conversions source configured (see make_analytics).
         self._analytics = analytics
